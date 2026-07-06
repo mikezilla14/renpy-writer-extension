@@ -272,6 +272,8 @@ export function parseRpy(path: string, text: string): FileModel {
     defaults: [],
     assignments: [],
     jumps: [],
+    returns: [],
+    actionTargets: [],
     dialogue: [],
     suppressions: new Map(),
   };
@@ -336,6 +338,14 @@ export function parseRpy(path: string, text: string): FileModel {
 
     const top = stack[stack.length - 1];
     const endsColon = s.endsWith(':');
+
+    // Screen actions referencing labels make those labels reachable — scan
+    // every statement (they appear in screens, defines, and python alike).
+    const actionRe = /\b(?:Jump|Call|Start)\s*\(\s*(?:"([^"]+)"|'([^']+)')/g;
+    let am: RegExpExecArray | null;
+    while ((am = actionRe.exec(s))) {
+      model.actionTargets.push({ target: am[1] ?? am[2], line: headerLine });
+    }
 
     if (top?.python) {
       handlePythonLine(model, s, headerLine, ctxOf(stack));
@@ -429,6 +439,11 @@ export function parseRpy(path: string, text: string): FileModel {
       if (!/^screen\b/.test(m[1].trim())) {
         handleJumpCall(model, 'call', m[1], headerLine, lastGlobalLabel);
       }
+      continue;
+    }
+
+    if (/^return\b/.test(s)) {
+      model.returns.push(headerLine);
       continue;
     }
 

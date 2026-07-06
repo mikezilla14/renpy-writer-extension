@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "mikezilla",
   "license": "MIT",
   "engines": {
@@ -37,10 +37,35 @@
         "title": "Ren'Py: Fold All Labels"
       },
       {
+        "command": "renpy-analytics.analyzeProject",
+        "title": "Ren'Py: Analyze Project"
+      },
+      {
         "command": "renpy-analytics.analyzeSaveSafety",
         "title": "Ren'Py: Analyze Save-File Safety (Workspace)"
+      },
+      {
+        "command": "renpy-analytics.exportReport",
+        "title": "Ren'Py: Export Analysis Report"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "renpy-analytics",
+          "title": "Ren'Py Analytics",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "renpy-analytics": [
+        {
+          "id": "renpyAnalytics.analysis",
+          "name": "Project Analysis"
+        }
+      ]
+    },
     "configuration": {
       "title": "Ren'Py Analytics",
       "properties": {
@@ -48,6 +73,27 @@
           "type": "boolean",
           "default": true,
           "description": "Report save-file safety risks (define'd variables changed at runtime, mutable define literals, variables created inside labels without a default) in the Problems panel."
+        },
+        "renpy-analytics.extraEntryPoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional label names treated as reachability roots (e.g. labels entered via config.label_overrides or custom launchers)."
+        },
+        "renpy-analytics.dynamicJumpMode": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "lenient"
+          ],
+          "default": "strict",
+          "enumDescriptions": [
+            "Report inaccessible labels as warnings even when dynamic jumps exist (messages note possible false positives).",
+            "Downgrade inaccessible-label findings to Information when the project contains dynamic jumps."
+          ],
+          "description": "How to report inaccessible labels when the project contains dynamic jumps ('jump expression …') whose targets can't be resolved statically."
         }
       }
     }

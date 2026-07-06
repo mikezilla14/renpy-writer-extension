@@ -89,6 +89,12 @@ export interface DialogueLine {
   line: number;
 }
 
+/** Screen-action label references: Jump("x"), Call("x"), Start("x") */
+export interface ActionTarget {
+  target: string;
+  line: number;
+}
+
 export interface FileModel {
   path: string;
   blocks: Block[];
@@ -98,6 +104,9 @@ export interface FileModel {
   defaults: VarDef[];
   assignments: Assignment[];
   jumps: JumpCall[];
+  /** Lines holding a `return` statement — used for fall-through detection */
+  returns: number[];
+  actionTargets: ActionTarget[];
   dialogue: DialogueLine[];
   /** line -> text after a "# renpy-analytics:" comment on that line */
   suppressions: Map<number, string>;
