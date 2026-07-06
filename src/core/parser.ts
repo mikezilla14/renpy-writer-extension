@@ -250,7 +250,9 @@ function handleJumpCall(
   model.jumps.push({ kind, target, dynamic: false, line });
 }
 
-function parseDialogueLine(s: string): { speaker: string | null; text: string } | null {
+function parseDialogueLine(
+  s: string
+): { speaker: string | null; adhoc: boolean; text: string } | null {
   let q = -1;
   for (let i = 0; i < s.length; i++) {
     if (s[i] === '"' || s[i] === "'") {
@@ -271,11 +273,13 @@ function parseDialogueLine(s: string): { speaker: string | null; text: string } 
   if (!lit) return null;
   let text = lit.value;
   let rest = s.slice(lit.end).trim();
+  let adhoc = false;
   // Ad-hoc character: "Name" "dialogue"
   if (speaker === null && (rest.startsWith('"') || rest.startsWith("'"))) {
     const lit2 = readString(rest, 0);
     if (lit2) {
       speaker = text;
+      adhoc = true;
       text = lit2.value;
       rest = rest.slice(lit2.end).trim();
     }
@@ -286,7 +290,7 @@ function parseDialogueLine(s: string): { speaker: string | null; text: string } 
   ) {
     return null;
   }
-  return { speaker, text };
+  return { speaker, adhoc, text };
 }
 
 function recordComment(model: FileModel, line: number, comment: string): void {

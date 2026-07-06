@@ -14,6 +14,7 @@ import { computeMetrics } from './core/metrics';
 import { parseRpy } from './core/parser';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
+import { analyzeSpeakers, SpeakerFinding } from './core/speakers';
 import { EXCLUDE_GLOB, WorkspaceIndex } from './workspaceIndex';
 
 const SELECTOR: vscode.DocumentSelector = [
@@ -52,6 +53,7 @@ class RenpyFoldingProvider implements vscode.FoldingRangeProvider {
 interface AnalysisResult {
   flow: FlowAnalysis;
   safety: SaveSafetyFinding[];
+  speakers: SpeakerFinding[];
   metrics: ReturnType<typeof computeMetrics>;
 }
 
@@ -59,10 +61,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const index = new WorkspaceIndex();
   const safetyDiagnostics = vscode.languages.createDiagnosticCollection('renpy-save-safety');
   const flowDiagnostics = vscode.languages.createDiagnosticCollection('renpy-flow');
+  const speakerDiagnostics = vscode.languages.createDiagnosticCollection('renpy-speakers');
   const tree = new AnalysisTreeProvider();
   context.subscriptions.push(
     safetyDiagnostics,
     flowDiagnostics,
+    speakerDiagnostics,
     vscode.window.registerTreeDataProvider('renpyAnalytics.analysis', tree),
     vscode.languages.registerFoldingRangeProvider(SELECTOR, new RenpyFoldingProvider())
   );
@@ -74,14 +78,19 @@ export function activate(context: vscode.ExtensionContext): void {
     const safety = config().get<boolean>('saveSafety.enabled', true)
       ? analyzeSaveSafety(models)
       : [];
+    const speakers = analyzeSpeakers(models);
     const metrics = computeMetrics(models);
-    publishDiagnostics(flow, safety);
+    publishDiagnostics(flow, safety, speakers);
     const gameDir = config().get<string>('gameDir', '').trim();
-    tree.setResults(flow, metrics, safety, gameDir || 'entire workspace');
-    return { flow, safety, metrics };
+    tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace');
+    return { flow, safety, speakers, metrics };
   };
 
-  const publishDiagnostics = (flow: FlowAnalysis, safety: SaveSafetyFinding[]): void => {
+  const publishDiagnostics = (
+    flow: FlowAnalysis,
+    safety: SaveSafetyFinding[],
+    speakers: SpeakerFinding[]
+  ): void => {
     const safetyByFile = new Map<string, vscode.Diagnostic[]>();
     for (const f of safety) {
       const d = new vscode.Diagnostic(
@@ -138,6 +147,22 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     flowDiagnostics.clear();
     for (const [file, ds] of flowByFile) flowDiagnostics.set(vscode.Uri.file(file), ds);
+
+    const speakerByFile = new Map<string, vscode.Diagnostic[]>();
+    for (const f of speakers) {
+      const d = new vscode.Diagnostic(
+        new vscode.Range(f.line, 0, f.line, 1000),
+        f.message,
+        vscode.DiagnosticSeverity.Information
+      );
+      d.source = 'renpy-analytics';
+      d.code = f.rule;
+      const arr = speakerByFile.get(f.file) ?? [];
+      arr.push(d);
+      speakerByFile.set(f.file, arr);
+    }
+    speakerDiagnostics.clear();
+    for (const [file, ds] of speakerByFile) speakerDiagnostics.set(vscode.Uri.file(file), ds);
   };
 
   /**

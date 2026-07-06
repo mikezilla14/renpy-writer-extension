@@ -3,11 +3,13 @@
 import { FlowAnalysis } from './graph';
 import { avgSentenceLength, ProjectMetrics } from './metrics';
 import { SaveSafetyFinding } from './saveSafety';
+import { SpeakerFinding } from './speakers';
 
 export interface ReportInput {
   flow: FlowAnalysis;
   metrics: ProjectMetrics;
   safety: SaveSafetyFinding[];
+  speakers?: SpeakerFinding[];
   /** Function that shortens absolute paths for display */
   relativize?: (path: string) => string;
   generatedAt?: Date;
@@ -57,6 +59,19 @@ export function buildMarkdownReport(input: ReportInput): string {
     lines.push('');
   }
 
+  const speakers = input.speakers ?? [];
+  lines.push('## Speaker consistency', '');
+  if (speakers.length === 0) {
+    lines.push('No string speakers colliding with defined characters.', '');
+  } else {
+    for (const f of speakers) {
+      lines.push(
+        `- \`"${f.speaker}"\` used as a string speaker but matches defined character \`${f.characterVar}\` — ${rel(f.file)}:${f.line + 1}`
+      );
+    }
+    lines.push('', 'Suppress with `# renpy-analytics: string-speaker` on or above the line.', '');
+  }
+
   lines.push('## Per-file statistics', '');
   lines.push('| File | Labels | Menus | Choices | Words |');
   lines.push('|---|---:|---:|---:|---:|');
@@ -69,7 +84,11 @@ export function buildMarkdownReport(input: ReportInput): string {
   lines.push('| Character | Words | Lines | Avg sentence length |');
   lines.push('|---|---:|---:|---:|');
   for (const c of metrics.characters) {
-    const name = c.key === c.displayName ? c.displayName : `${c.displayName} (${c.key})`;
+    const name = c.adhoc
+      ? `"${c.key}" (string speaker)`
+      : c.key === c.displayName
+        ? c.displayName
+        : `${c.displayName} (${c.key})`;
     lines.push(`| ${name} | ${fmt(c.words)} | ${fmt(c.lines)} | ${avgSentenceLength(c).toFixed(1)} |`);
   }
   lines.push('');
@@ -105,10 +124,18 @@ export function buildJsonReport(input: ReportInput): string {
         line: f.line + 1,
         severity: f.severity,
       })),
+      speakerFindings: (input.speakers ?? []).map((f) => ({
+        rule: f.rule,
+        speaker: f.speaker,
+        characterVar: f.characterVar,
+        file: rel(f.file),
+        line: f.line + 1,
+      })),
       files: metrics.files.map((f) => ({ ...f, path: rel(f.path) })),
       characters: metrics.characters.map((c) => ({
         key: c.key,
         displayName: c.displayName,
+        adhoc: c.adhoc,
         words: c.words,
         lines: c.lines,
         sentences: c.sentences,

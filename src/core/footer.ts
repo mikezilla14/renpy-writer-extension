@@ -80,6 +80,7 @@ export function buildFooter(
     for (const c of metrics.characters) {
       let label: string;
       if (c.key === NARRATOR_KEY) label = 'narrator';
+      else if (c.adhoc) label = `"${c.key}" (string speaker)`;
       else {
         const display = displayNames.get(c.key);
         label = display && display !== c.key ? `${c.key} (${display})` : c.key;

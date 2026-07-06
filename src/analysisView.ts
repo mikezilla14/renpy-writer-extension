@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { FlowAnalysis } from './core/graph';
 import { avgSentenceLength, ProjectMetrics } from './core/metrics';
 import { SaveSafetyFinding } from './core/saveSafety';
+import { SpeakerFinding } from './core/speakers';
 
 interface TreeNode {
   label: string;
@@ -30,6 +31,7 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     flow: FlowAnalysis,
     metrics: ProjectMetrics,
     safety: SaveSafetyFinding[],
+    speakers: SpeakerFinding[],
     scopeLabel: string
   ): void {
     const rel = (p: string): string => vscode.workspace.asRelativePath(p);
@@ -73,10 +75,29 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }));
 
     const charChildren: TreeNode[] = metrics.characters.map((c) => ({
-      label: c.key === c.displayName ? c.displayName : `${c.displayName} (${c.key})`,
+      label: c.adhoc
+        ? `"${c.key}" (string speaker)`
+        : c.key === c.displayName
+          ? c.displayName
+          : `${c.displayName} (${c.key})`,
       description: `${fmt(c.words)} words · ${fmt(c.lines)} lines · ${avgSentenceLength(c).toFixed(1)} w/sentence`,
-      icon: new vscode.ThemeIcon('person'),
+      tooltip: c.adhoc
+        ? 'Ad-hoc string speaker ("Name" "dialogue") — a separate one-off character, not a defined Character variable'
+        : undefined,
+      icon: new vscode.ThemeIcon(c.adhoc ? 'quote' : 'person'),
     }));
+
+    const speakerChildren: TreeNode[] =
+      speakers.length === 0
+        ? [{ label: 'No inconsistencies found', icon: new vscode.ThemeIcon('check') }]
+        : speakers.map((f) => ({
+            label: `"${f.speaker}" vs ${f.characterVar}`,
+            description: `${rel(f.file)}:${f.line + 1}`,
+            tooltip: f.message,
+            icon: new vscode.ThemeIcon('warning'),
+            file: f.file,
+            line: f.line,
+          }));
 
     this.roots = [
       {
@@ -95,6 +116,11 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         label: `Save-file safety (${fmt(safety.length)})`,
         icon: new vscode.ThemeIcon('shield'),
         children: safetyChildren,
+      },
+      {
+        label: `Speaker consistency (${fmt(speakers.length)})`,
+        icon: new vscode.ThemeIcon('comment-discussion'),
+        children: speakerChildren,
       },
       {
         label: `Files (${fmt(metrics.files.length)}) — ${fmt(metrics.totalLabels)} labels, ${fmt(metrics.totalMenus)} menus`,

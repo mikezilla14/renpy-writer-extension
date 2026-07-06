@@ -85,6 +85,8 @@ export interface JumpCall {
 export interface DialogueLine {
   /** null for the narrator */
   speaker: string | null;
+  /** True for the ad-hoc string-speaker form: "Name" "dialogue" */
+  adhoc: boolean;
   text: string;
   line: number;
 }

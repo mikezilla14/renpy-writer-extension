@@ -49,6 +49,15 @@ describe('buildFooter', () => {
     expect(footer).toMatch(/# Variables referenced:\n#   mood, route_flag, trust/);
   });
 
+  it('labels ad-hoc string speakers explicitly', () => {
+    const m = parseRpy(
+      'x.rpy',
+      'define e = Character("Eileen")\n\nlabel start:\n    "Eileen" "Hello there."\n    return\n'
+    );
+    const f = buildFooter(m, [m], { date: '2026-07-06' });
+    expect(f).toContain('"Eileen" (string speaker): 2 words');
+  });
+
   it('honors the sections option', () => {
     const only = buildFooter(model, [model], { date: '2026-07-06', sections: ['summary'] });
     expect(only).toContain('Labels: 2');

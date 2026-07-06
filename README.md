@@ -42,7 +42,8 @@ Disable entirely with the `renpy-analytics.saveSafety.enabled` setting. Run on d
 
 - **Inaccessible labels** — labels unreachable from any entry point (`start`, `splashscreen`, `after_load`, screen actions, …). Reported in the Problems panel and the **Ren'Py Analytics** activity-bar view. Dynamic jumps (`jump expression …`) are counted and noted, since they make reachability undecidable — set `renpy-analytics.dynamicJumpMode` to `lenient` to downgrade findings when they exist, or tag intentionally-dynamic targets with `# renpy-analytics: reachable`.
 - **Per-file statistics** — labels, menus, choices, and words per file.
-- **Per-character statistics** — words, dialogue lines, and average sentence length per character (Ren'Py text tags stripped; `extend` lines attributed to the previous speaker; narrator tracked separately).
+- **Per-character statistics** — words, dialogue lines, and average sentence length per character (Ren'Py text tags stripped; `extend` lines attributed to the previous speaker; narrator tracked separately). Ad-hoc string speakers (`"Name" "dialogue"`) are distinct characters in Ren'Py and are labeled `"Name" (string speaker)` so they can't be mistaken for a defined Character.
+- **Speaker consistency** — a `duplicate-speaker` finding (Problems panel + tree view) whenever a string speaker matches a defined character's display name or variable, e.g. `"Lady Eleanor" "..."` in a script that defines `lady_eleanor = Character("Lady Eleanor")`. Usually an authoring slip — the string form ignores the Character's styling and splits word counts. Suppress intentional distinct voices with `# renpy-analytics: string-speaker` on or above the line.
 
 **Ren'Py: Export Analysis Report** writes the full analysis as Markdown (for humans) or JSON (for CI).
 

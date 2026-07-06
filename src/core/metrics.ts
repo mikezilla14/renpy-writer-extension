@@ -7,6 +7,8 @@ export interface CharacterStats {
   /** Variable name of the character, display name for ad-hoc characters, or '<narrator>' */
   key: string;
   displayName: string;
+  /** True for ad-hoc string speakers ("Name" "dialogue") — a distinct character in Ren'Py */
+  adhoc: boolean;
   words: number;
   sentences: number;
   lines: number;
@@ -96,12 +98,16 @@ export function collectCharacterDisplayNames(models: FileModel[]): Map<string, s
 export function computeMetrics(models: FileModel[]): ProjectMetrics {
   const displayNames = collectCharacterDisplayNames(models);
 
+  // Ad-hoc string speakers are distinct characters in Ren'Py, so they must
+  // never merge with a variable of the same name — key the map accordingly.
   const charStats = new Map<string, CharacterStats>();
-  const bump = (key: string, words: number, sentences: number): void => {
-    let cs = charStats.get(key);
+  const bump = (key: string, adhoc: boolean, words: number, sentences: number): void => {
+    const mapKey = (adhoc ? 'S:' : 'V:') + key;
+    let cs = charStats.get(mapKey);
     if (!cs) {
-      const displayName = key === NARRATOR_KEY ? 'narrator' : displayNames.get(key) ?? key;
-      charStats.set(key, (cs = { key, displayName, words: 0, sentences: 0, lines: 0 }));
+      const displayName =
+        key === NARRATOR_KEY ? 'narrator' : adhoc ? key : displayNames.get(key) ?? key;
+      charStats.set(mapKey, (cs = { key, displayName, adhoc, words: 0, sentences: 0, lines: 0 }));
     }
     cs.words += words;
     cs.sentences += sentences;
@@ -113,19 +119,19 @@ export function computeMetrics(models: FileModel[]): ProjectMetrics {
 
   for (const m of models) {
     let fileWords = 0;
-    let prevSpeaker: string = NARRATOR_KEY;
+    let prev: { key: string; adhoc: boolean } = { key: NARRATOR_KEY, adhoc: false };
     const ordered = [...m.dialogue].sort((a, b) => a.line - b.line);
     for (const d of ordered) {
       const normalized = normalizeDialogue(d.text);
       const words = countWords(normalized);
       const sentences = countSentences(normalized);
       fileWords += words;
-      let key: string;
-      if (d.speaker === null) key = NARRATOR_KEY;
-      else if (d.speaker === 'extend') key = prevSpeaker;
-      else key = d.speaker;
-      bump(key, words, sentences);
-      prevSpeaker = key;
+      let cur: { key: string; adhoc: boolean };
+      if (d.speaker === null) cur = { key: NARRATOR_KEY, adhoc: false };
+      else if (d.speaker === 'extend' && !d.adhoc) cur = prev;
+      else cur = { key: d.speaker, adhoc: d.adhoc };
+      bump(cur.key, cur.adhoc, words, sentences);
+      prev = cur;
     }
     const choices = m.menus.reduce((n, menu) => n + menu.choices.length, 0);
     totalChoices += choices;
