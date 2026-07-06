@@ -95,6 +95,15 @@ export interface ActionTarget {
   line: number;
 }
 
+/** An identifier used in an expression (condition, RHS, python line, screen action) */
+export interface IdentifierRef {
+  /** Full dotted name as written (renpy.pause, persistent.seen, …) */
+  name: string;
+  /** True when the identifier is invoked: name(...) */
+  call: boolean;
+  line: number;
+}
+
 export interface FileModel {
   path: string;
   blocks: Block[];
@@ -107,6 +116,7 @@ export interface FileModel {
   /** Lines holding a `return` statement — used for fall-through detection */
   returns: number[];
   actionTargets: ActionTarget[];
+  identifiers: IdentifierRef[];
   dialogue: DialogueLine[];
   /** line -> text after a "# renpy-analytics:" comment on that line */
   suppressions: Map<number, string>;

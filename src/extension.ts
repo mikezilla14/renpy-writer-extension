@@ -2,6 +2,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
 import { computeFoldingRanges } from './core/folding';
+import {
+  ALL_FOOTER_SECTIONS,
+  applyFooter,
+  buildFooter,
+  FooterSection,
+  hasFooter,
+} from './core/footer';
 import { analyzeFlow, FlowAnalysis } from './core/graph';
 import { computeMetrics } from './core/metrics';
 import { parseRpy } from './core/parser';
@@ -133,6 +140,28 @@ export function activate(context: vscode.ExtensionContext): void {
     for (const [file, ds] of flowByFile) flowDiagnostics.set(vscode.Uri.file(file), ds);
   };
 
+  /**
+   * Regenerates the footer in `doc`. When `force` is false the document is
+   * only touched if it already contains a footer block. Returns true when an
+   * edit was applied.
+   */
+  const updateFooterInDocument = async (
+    doc: vscode.TextDocument,
+    force: boolean
+  ): Promise<boolean> => {
+    const text = doc.getText();
+    if (!force && !hasFooter(text)) return false;
+    const models = await index.getModels();
+    const target = parseRpy(doc.uri.fsPath, text);
+    const sections = config().get<FooterSection[]>('footer.sections', [...ALL_FOOTER_SECTIONS]);
+    const footer = buildFooter(target, models, { sections });
+    const newText = applyFooter(text, footer);
+    if (newText === text) return false;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(doc.uri, new vscode.Range(0, 0, doc.lineCount, 0), newText);
+    return vscode.workspace.applyEdit(edit);
+  };
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = (doc?: vscode.TextDocument): void => {
     if (doc) {
@@ -171,6 +200,30 @@ export function activate(context: vscode.ExtensionContext): void {
         safety.length === 0
           ? "Ren'Py Analytics: no save-file safety risks found."
           : `Ren'Py Analytics: ${safety.length} save-file safety finding${safety.length === 1 ? '' : 's'} — see the Problems panel.`
+      );
+    }),
+
+    vscode.commands.registerCommand('renpy-analytics.generateFooter', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isRenpyDoc(editor.document)) {
+        void vscode.window.showWarningMessage("Open a .rpy file to generate its footer.");
+        return;
+      }
+      await updateFooterInDocument(editor.document, true);
+    }),
+
+    vscode.commands.registerCommand('renpy-analytics.generateAllFooters', async () => {
+      const models = await index.getModels();
+      let updated = 0;
+      for (const m of models) {
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(m.path));
+        if (await updateFooterInDocument(doc, true)) {
+          await doc.save();
+          updated++;
+        }
+      }
+      void vscode.window.showInformationMessage(
+        `Ren'Py Analytics: footers generated in ${updated} of ${models.length} file(s).`
       );
     }),
 
@@ -236,11 +289,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => scheduleRefresh(e.document)),
-    vscode.workspace.onDidSaveTextDocument((doc) => {
-      if (isRenpyDoc(doc)) {
-        index.clearOverride(doc);
-        scheduleRefresh();
+    vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      if (!isRenpyDoc(doc)) return;
+      index.clearOverride(doc);
+      // Regenerate existing footers on save when enabled. Loop-safe: the
+      // second save produces identical text, so no edit and no further save.
+      if (config().get<boolean>('footer.onSave', false)) {
+        if (await updateFooterInDocument(doc, false)) await doc.save();
       }
+      scheduleRefresh();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('renpy-analytics')) scheduleRefresh();

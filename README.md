@@ -4,7 +4,7 @@ Structure folding, save-file safety checks, and (coming) story-flow analysis and
 
 Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the full roadmap.
 
-## Features (0.2 — M1 + M2)
+## Features (0.3 — M1–M3)
 
 ### Structural folding
 
@@ -47,6 +47,29 @@ Disable entirely with the `renpy-analytics.saveSafety.enabled` setting. Run on d
 **Ren'Py: Export Analysis Report** writes the full analysis as Markdown (for humans) or JSON (for CI).
 
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
+
+### Generated file footer
+
+**Ren'Py: Generate File Footer** (or **… for All Files**) appends a summary comment block to the end of a script:
+
+```renpy
+# ==== renpy-analytics:begin (auto-generated - do not edit; regenerate via VS Code) ====
+# File summary - generated 2026-07-06
+# Labels: 12 | Menus: 4 (11 choices) | Total words: 3,482
+#
+# Words per character:
+#   e (Eileen): 1,204 words | avg sentence 9.3
+#   narrator: 1,388 words | avg sentence 12.0
+#
+# Classes/functions called:
+#   Character, bonus_points, renpy.pause
+#
+# Variables referenced:
+#   mood, route_flag, trust
+# ==== renpy-analytics:end ====
+```
+
+Regeneration replaces the block in place — never duplicates it — and preserves the file's line endings. Configure which sections appear with `renpy-analytics.footer.sections`; enable `renpy-analytics.footer.onSave` to auto-refresh footers on save (only in files that already have one).
 
 ### Scoping to one game folder
 

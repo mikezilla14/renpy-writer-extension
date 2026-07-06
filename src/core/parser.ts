@@ -155,6 +155,41 @@ function stripStore(name: string): string {
   return name.replace(/^store\./, '');
 }
 
+const PY_KEYWORDS = new Set([
+  'and', 'or', 'not', 'in', 'is', 'if', 'else', 'elif', 'for', 'while', 'def', 'class',
+  'return', 'pass', 'break', 'continue', 'lambda', 'None', 'True', 'False', 'import',
+  'from', 'as', 'with', 'try', 'except', 'finally', 'raise', 'global', 'nonlocal',
+  'del', 'yield', 'assert', 'print',
+]);
+
+/**
+ * Collects identifiers used in an expression, distinguishing calls (name
+ * followed by '(') from plain references. Keyword-argument names and
+ * assignment targets (name followed by a single '=') are skipped — targets
+ * are recorded separately as assignments.
+ */
+function extractIdentifiers(
+  model: FileModel,
+  expr: string,
+  line: number,
+  callsOnly = false
+): void {
+  const cleaned = expr.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, ' ');
+  const re = /[A-Za-z_][\w.]*/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cleaned))) {
+    const name = m[0];
+    if (PY_KEYWORDS.has(name) || PY_KEYWORDS.has(name.split('.')[0])) continue;
+    let j = m.index + name.length;
+    while (j < cleaned.length && cleaned[j] === ' ') j++;
+    const next = cleaned[j];
+    const call = next === '(';
+    if (!call && next === '=' && cleaned[j + 1] !== '=') continue;
+    if (callsOnly && !call) continue;
+    model.identifiers.push({ name: stripStore(name), call, line });
+  }
+}
+
 interface OpenBlock {
   block: Block;
   label?: LabelDecl;
@@ -274,6 +309,7 @@ export function parseRpy(path: string, text: string): FileModel {
     jumps: [],
     returns: [],
     actionTargets: [],
+    identifiers: [],
     dialogue: [],
     suppressions: new Map(),
   };
@@ -349,6 +385,7 @@ export function parseRpy(path: string, text: string): FileModel {
 
     if (top?.python) {
       handlePythonLine(model, s, headerLine, ctxOf(stack));
+      extractIdentifiers(model, s, headerLine);
       if (endsColon) open('block', indent, headerLine);
       continue;
     }
@@ -391,6 +428,7 @@ export function parseRpy(path: string, text: string): FileModel {
     if (endsColon) {
       const kw = /^(if|elif|else|while|for)\b/.exec(s)?.[1] as BlockKind | undefined;
       if (kw) {
+        extractIdentifiers(model, s.slice(kw.length, -1), headerLine);
         open(kw, indent, headerLine);
         continue;
       }
@@ -402,6 +440,8 @@ export function parseRpy(path: string, text: string): FileModel {
       if (lit) {
         const rest = s.slice(lit.end, s.length - 1).trim();
         if (rest === '' || /^\([^)]*\)$/.test(rest) || /^if\b/.test(rest) || /^\([^)]*\)\s+if\b/.test(rest)) {
+          const cond = /\bif\b(.+)$/.exec(rest);
+          if (cond) extractIdentifiers(model, cond[1], headerLine);
           const choice: ChoiceDecl = { text: lit.value, headerLine, endLine: headerLine };
           top.menu?.choices.push(choice);
           open('choice', indent, headerLine, { choice }, lit.value);
@@ -412,6 +452,7 @@ export function parseRpy(path: string, text: string): FileModel {
 
     if ((m = /^\$\s*(.*)$/.exec(s))) {
       handlePythonLine(model, m[1], headerLine, ctxOf(stack));
+      extractIdentifiers(model, m[1], headerLine);
       continue;
     }
 
@@ -426,6 +467,7 @@ export function parseRpy(path: string, text: string): FileModel {
           line: headerLine,
         };
         (m[1] === 'define' ? model.defines : model.defaults).push(def);
+        extractIdentifiers(model, def.rhs, headerLine);
       }
       continue;
     }
@@ -445,6 +487,12 @@ export function parseRpy(path: string, text: string): FileModel {
     if (/^return\b/.test(s)) {
       model.returns.push(headerLine);
       continue;
+    }
+
+    // Screen-language statements (textbutton … action SetVariable(…)): record
+    // invoked actions/functions only — plain tokens are screen keywords.
+    if (top?.screen) {
+      extractIdentifiers(model, s, headerLine, true);
     }
 
     if (endsColon) {

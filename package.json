@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "mikezilla",
   "license": "MIT",
   "engines": {
@@ -51,6 +51,14 @@
       {
         "command": "renpy-analytics.selectGameFolder",
         "title": "Ren'Py: Select Game Folder"
+      },
+      {
+        "command": "renpy-analytics.generateFooter",
+        "title": "Ren'Py: Generate File Footer"
+      },
+      {
+        "command": "renpy-analytics.generateAllFooters",
+        "title": "Ren'Py: Generate Footers for All Files"
       }
     ],
     "viewsContainers": {
@@ -90,6 +98,30 @@
           },
           "default": [],
           "description": "Additional label names treated as reachability roots (e.g. labels entered via config.label_overrides or custom launchers)."
+        },
+        "renpy-analytics.footer.sections": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "characters",
+              "callables",
+              "variables"
+            ]
+          },
+          "default": [
+            "summary",
+            "characters",
+            "callables",
+            "variables"
+          ],
+          "description": "Which sections the generated file footer includes. Teams that don't want variable lists in shipped scripts can drop 'variables'."
+        },
+        "renpy-analytics.footer.onSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Regenerate the footer on save for files that already contain one (files without a footer are never touched)."
         },
         "renpy-analytics.dynamicJumpMode": {
           "type": "string",

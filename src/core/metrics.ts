@@ -79,8 +79,8 @@ function characterDisplayName(rhs: string): string | undefined {
   return m[1] ?? m[2];
 }
 
-export function computeMetrics(models: FileModel[]): ProjectMetrics {
-  // Character variable -> display name (from define'd Character(...) calls)
+/** Character variable -> display name, from define'd Character(...) calls. */
+export function collectCharacterDisplayNames(models: FileModel[]): Map<string, string> {
   const displayNames = new Map<string, string>();
   for (const m of models) {
     for (const d of m.defines) {
@@ -90,6 +90,11 @@ export function computeMetrics(models: FileModel[]): ProjectMetrics {
       }
     }
   }
+  return displayNames;
+}
+
+export function computeMetrics(models: FileModel[]): ProjectMetrics {
+  const displayNames = collectCharacterDisplayNames(models);
 
   const charStats = new Map<string, CharacterStats>();
   const bump = (key: string, words: number, sentences: number): void => {
