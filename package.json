@@ -1,0 +1,67 @@
+{
+  "name": "renpy-analytics",
+  "displayName": "Ren'Py Analytics",
+  "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
+  "version": "0.1.0",
+  "publisher": "mikezilla",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onLanguage:renpy",
+    "workspaceContains:**/*.rpy"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "renpy",
+        "extensions": [
+          ".rpy",
+          ".rpym"
+        ],
+        "aliases": [
+          "Ren'Py"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "renpy-analytics.foldAllLabels",
+        "title": "Ren'Py: Fold All Labels"
+      },
+      {
+        "command": "renpy-analytics.analyzeSaveSafety",
+        "title": "Ren'Py: Analyze Save-File Safety (Workspace)"
+      }
+    ],
+    "configuration": {
+      "title": "Ren'Py Analytics",
+      "properties": {
+        "renpy-analytics.saveSafety.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report save-file safety risks (define'd variables changed at runtime, mutable define literals, variables created inside labels without a default) in the Problems panel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "test": "vitest run",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5",
+    "vitest": "^2.1.8"
+  }
+}
