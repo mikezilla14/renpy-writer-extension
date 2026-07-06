@@ -10,6 +10,8 @@ interface TreeNode {
   icon?: vscode.ThemeIcon;
   file?: string;
   line?: number;
+  /** Command to run on click (takes precedence over file/line navigation) */
+  commandId?: string;
   children?: TreeNode[];
 }
 
@@ -24,7 +26,12 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   private emitter = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
 
-  setResults(flow: FlowAnalysis, metrics: ProjectMetrics, safety: SaveSafetyFinding[]): void {
+  setResults(
+    flow: FlowAnalysis,
+    metrics: ProjectMetrics,
+    safety: SaveSafetyFinding[],
+    scopeLabel: string
+  ): void {
     const rel = (p: string): string => vscode.workspace.asRelativePath(p);
 
     const inaccessibleChildren: TreeNode[] =
@@ -73,6 +80,13 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
     this.roots = [
       {
+        label: `Scope: ${scopeLabel}`,
+        description: 'click to change',
+        tooltip: 'Restrict analysis to one game folder (useful in monorepos with several game copies)',
+        icon: new vscode.ThemeIcon('folder-opened'),
+        commandId: 'renpy-analytics.selectGameFolder',
+      },
+      {
         label: `Inaccessible labels (${fmt(flow.inaccessible.length)})`,
         icon: new vscode.ThemeIcon('debug-disconnect'),
         children: inaccessibleChildren,
@@ -106,7 +120,9 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     item.description = node.description;
     item.tooltip = node.tooltip;
     item.iconPath = node.icon;
-    if (node.file !== undefined && node.line !== undefined) {
+    if (node.commandId) {
+      item.command = { command: node.commandId, title: node.label };
+    } else if (node.file !== undefined && node.line !== undefined) {
       item.command = {
         command: 'vscode.open',
         title: 'Open',

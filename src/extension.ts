@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
 import { computeFoldingRanges } from './core/folding';
@@ -6,7 +7,7 @@ import { computeMetrics } from './core/metrics';
 import { parseRpy } from './core/parser';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
-import { WorkspaceIndex } from './workspaceIndex';
+import { EXCLUDE_GLOB, WorkspaceIndex } from './workspaceIndex';
 
 const SELECTOR: vscode.DocumentSelector = [
   { language: 'renpy' },
@@ -68,7 +69,8 @@ export function activate(context: vscode.ExtensionContext): void {
       : [];
     const metrics = computeMetrics(models);
     publishDiagnostics(flow, safety);
-    tree.setResults(flow, metrics, safety);
+    const gameDir = config().get<string>('gameDir', '').trim();
+    tree.setResults(flow, metrics, safety, gameDir || 'entire workspace');
     return { flow, safety, metrics };
   };
 
@@ -169,6 +171,44 @@ export function activate(context: vscode.ExtensionContext): void {
         safety.length === 0
           ? "Ren'Py Analytics: no save-file safety risks found."
           : `Ren'Py Analytics: ${safety.length} save-file safety finding${safety.length === 1 ? '' : 's'} — see the Problems panel.`
+      );
+    }),
+
+    vscode.commands.registerCommand('renpy-analytics.selectGameFolder', async () => {
+      // Candidate game roots: directories holding options.rpy or script.rpy
+      const markers = await vscode.workspace.findFiles(
+        '**/{options.rpy,script.rpy}',
+        EXCLUDE_GLOB
+      );
+      const dirs = [...new Set(markers.map((u) => path.dirname(u.fsPath)))].sort();
+      const current = config().get<string>('gameDir', '').trim();
+      const items: (vscode.QuickPickItem & { value: string })[] = dirs.map((d) => {
+        const rel = vscode.workspace.asRelativePath(d);
+        return {
+          label: rel,
+          description: rel === current ? 'current' : undefined,
+          value: rel,
+        };
+      });
+      items.push({
+        label: 'Entire workspace',
+        description: current === '' ? 'current' : 'analyze every .rpy in the workspace',
+        value: '',
+      });
+      const picked = await vscode.window.showQuickPick(items, {
+        title: "Select the game folder Ren'Py Analytics should analyze",
+        placeHolder:
+          dirs.length > 1
+            ? `${dirs.length} game folders detected — pick one to scope the analysis`
+            : 'Pick the analysis scope',
+      });
+      if (!picked) return;
+      await config().update('gameDir', picked.value, vscode.ConfigurationTarget.Workspace);
+      // onDidChangeConfiguration triggers a refresh; message for clarity
+      void vscode.window.showInformationMessage(
+        picked.value
+          ? `Ren'Py Analytics now analyzes '${picked.value}'.`
+          : "Ren'Py Analytics now analyzes the entire workspace."
       );
     }),
 

@@ -1,9 +1,27 @@
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { FileModel } from './core/model';
 import { parseRpy } from './core/parser';
+import { isUnder } from './core/paths';
 
-const EXCLUDE_GLOB = '{**/saves/**,**/cache/**,**/.git/**,**/tl/**,**/node_modules/**}';
+export const EXCLUDE_GLOB = '{**/saves/**,**/cache/**,**/.git/**,**/tl/**,**/node_modules/**}';
+
+/**
+ * Roots to restrict analysis to, from the renpy-analytics.gameDir setting
+ * (relative to each workspace folder, or absolute). Empty when unset —
+ * analyze the whole workspace.
+ */
+function gameDirRoots(): string[] {
+  const gameDir = vscode.workspace
+    .getConfiguration('renpy-analytics')
+    .get<string>('gameDir', '')
+    .trim();
+  if (!gameDir) return [];
+  if (path.isAbsolute(gameDir)) return [gameDir];
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  return folders.map((f) => path.join(f.uri.fsPath, gameDir));
+}
 
 /**
  * mtime-keyed cache of parsed FileModels for every .rpy/.rpym in the
@@ -26,7 +44,11 @@ export class WorkspaceIndex {
   }
 
   async getModels(): Promise<FileModel[]> {
-    const uris = await vscode.workspace.findFiles('**/*.{rpy,rpym}', EXCLUDE_GLOB);
+    let uris = await vscode.workspace.findFiles('**/*.{rpy,rpym}', EXCLUDE_GLOB);
+    const roots = gameDirRoots();
+    if (roots.length) {
+      uris = uris.filter((u) => roots.some((r) => isUnder(r, u.fsPath)));
+    }
     const models: FileModel[] = [];
     const seen = new Set<string>();
     for (const uri of uris) {

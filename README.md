@@ -48,6 +48,10 @@ Disable entirely with the `renpy-analytics.saveSafety.enabled` setting. Run on d
 
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
 
+### Scoping to one game folder
+
+By default every `.rpy` in the workspace is analyzed. In a monorepo with several copies of a game (e.g. `prod/` and `nonprod/`), run **Ren'Py: Select Game Folder** — it detects candidate game roots (folders containing `options.rpy`/`script.rpy`) and saves your pick to the workspace setting `renpy-analytics.gameDir`. The current scope is shown at the top of the Ren'Py Analytics view; click it to change.
+
 ## Development
 
 ```sh

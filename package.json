@@ -47,6 +47,10 @@
       {
         "command": "renpy-analytics.exportReport",
         "title": "Ren'Py: Export Analysis Report"
+      },
+      {
+        "command": "renpy-analytics.selectGameFolder",
+        "title": "Ren'Py: Select Game Folder"
       }
     ],
     "viewsContainers": {
@@ -73,6 +77,11 @@
           "type": "boolean",
           "default": true,
           "description": "Report save-file safety risks (define'd variables changed at runtime, mutable define literals, variables created inside labels without a default) in the Problems panel."
+        },
+        "renpy-analytics.gameDir": {
+          "type": "string",
+          "default": "",
+          "description": "Restrict analysis to this folder (workspace-relative or absolute). Leave empty to analyze every .rpy file in the workspace. Useful in monorepos containing several copies of a game — set it via the 'Ren'Py: Select Game Folder' command."
         },
         "renpy-analytics.extraEntryPoints": {
           "type": "array",

@@ -167,7 +167,7 @@ Chosen to complement (not duplicate) vscode-language-renpy and renpy-magic:
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `renpy-analytics.gameDir` | auto-detect | path to `game/` |
+| `renpy-analytics.gameDir` | `""` (whole workspace) | restrict analysis to one folder; set via the *Select Game Folder* picker (detects `options.rpy`/`script.rpy` roots) — needed in monorepos with several game copies |
 | `renpy-analytics.exclude` | `["tl/**","saves/**","cache/**"]` | analysis exclusions |
 | `renpy-analytics.extraEntryPoints` | `[]` | additional root labels |
 | `renpy-analytics.dynamicJumpMode` | `strict` | `strict` \| `lenient` |
