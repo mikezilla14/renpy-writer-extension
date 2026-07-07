@@ -274,6 +274,27 @@ export function activate(context: vscode.ExtensionContext): void {
     return vscode.workspace.applyEdit(edit);
   };
 
+  /**
+   * Folds every region of the given block kinds in the active editor.
+   * Inner regions (choices inside menus inside labels) are passed in the same
+   * call, so unfolding an outer block reveals still-collapsed inner blocks.
+   */
+  const foldBlocks = async (kinds: string[]): Promise<void> => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !isRenpyDoc(editor.document)) {
+      void vscode.window.showWarningMessage('Open a .rpy file to fold its blocks.');
+      return;
+    }
+    const model = parseRpy(editor.document.uri.fsPath, editor.document.getText());
+    const wanted = new Set(kinds);
+    const lines = computeFoldingRanges(model)
+      .filter((r) => wanted.has(r.blockKind))
+      .map((r) => r.start);
+    if (lines.length) {
+      await vscode.commands.executeCommand('editor.fold', { levels: 1, selectionLines: lines });
+    }
+  };
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = (doc?: vscode.TextDocument): void => {
     if (doc) {
@@ -287,15 +308,15 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('renpy-analytics.foldAllLabels', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || !isRenpyDoc(editor.document)) return;
-      const model = parseRpy(editor.document.uri.fsPath, editor.document.getText());
-      const lines = model.labels.map((l) => l.headerLine);
-      if (lines.length) {
-        await vscode.commands.executeCommand('editor.fold', { levels: 1, selectionLines: lines });
-      }
-    }),
+    vscode.commands.registerCommand('renpy-analytics.foldAllLabels', () =>
+      foldBlocks(['label'])
+    ),
+    vscode.commands.registerCommand('renpy-analytics.foldAllMenus', () =>
+      foldBlocks(['menu', 'choice'])
+    ),
+    vscode.commands.registerCommand('renpy-analytics.foldAllLabelsAndMenus', () =>
+      foldBlocks(['label', 'menu', 'choice'])
+    ),
 
     vscode.commands.registerCommand('renpy-analytics.analyzeProject', async () => {
       const { flow, safety, metrics } = await runAnalysis();

@@ -14,7 +14,11 @@ Real folding ranges for `.rpy`/`.rpym` files — not indentation guessing:
 - `menu` blocks and each individual choice
 - `screen`, `init`, `init python`, and `python` blocks
 
-Command: **Ren'Py: Fold All Labels** — collapse the active file to its label skeleton.
+Commands:
+
+- **Ren'Py: Fold All Labels** — collapse the active file to its label skeleton.
+- **Ren'Py: Fold All Menus** — collapse every menu block and choice (prose stays visible).
+- **Ren'Py: Fold All Labels and Menus** — fully collapse everything foldable; menus stay collapsed even after you unfold a label. Unfold with VS Code's built-in Unfold All (`Ctrl+K Ctrl+J`).
 
 ### Save-file safety diagnostics
 

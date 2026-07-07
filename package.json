@@ -37,6 +37,14 @@
         "title": "Ren'Py: Fold All Labels"
       },
       {
+        "command": "renpy-analytics.foldAllMenus",
+        "title": "Ren'Py: Fold All Menus"
+      },
+      {
+        "command": "renpy-analytics.foldAllLabelsAndMenus",
+        "title": "Ren'Py: Fold All Labels and Menus"
+      },
+      {
         "command": "renpy-analytics.analyzeProject",
         "title": "Ren'Py: Analyze Project"
       },
