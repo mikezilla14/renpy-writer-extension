@@ -72,7 +72,11 @@ Consequence extraction adapted from [universal-renpy-walkthrough](https://github
 
 ### Story flow graph
 
-**Ren'Py: Show Story Flow Graph** opens an interactive map of the whole story: label nodes plus menu-choice nodes, jump/call/fall-through edges, entry points outlined green, inaccessible labels red, dynamic jumps as a dashed pseudo-node. Drag to pan, scroll to zoom, click any node to open it in the editor. **Ren'Py: Export Flow Graph (DOT)** writes the same graph as Graphviz DOT for rendering with `dot -Tsvg` or any DOT viewer.
+**Ren'Py: Show Story Flow Graph** opens an interactive map of the whole story: label nodes plus menu-choice nodes, jump/call/fall-through edges, entry points outlined green, inaccessible labels red, dynamic jumps as a dashed pseudo-node. Drag to pan, scroll to zoom, click any node to open it in the editor.
+
+**Ren'Py: Show Story Flow Graph (Current File)** scopes the map to the active script (e.g. one day file): everything in the file plus a dimmed, dashed ring of external neighbors — the labels in other files that jump in, and the ones this file exits to — all still clickable.
+
+**Ren'Py: Export Flow Graph (DOT)** writes either graph (it asks: whole project or current file) as Graphviz DOT for rendering with `dot -Tsvg` or any DOT viewer.
 
 ### Dead-end detection
 

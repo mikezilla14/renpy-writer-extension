@@ -27,10 +27,13 @@ function layout(graph: FlowGraph): Placed[] {
     arr.push(e.to);
     adj.set(e.from, arr);
   }
+  // Roots: entry labels plus anything nothing points at (covers file-scoped
+  // graphs where the project entry points live in other files).
+  const hasIncoming = new Set(graph.edges.map((e) => e.to));
   const depth = new Map<string, number>();
   const queue: string[] = [];
   for (const n of graph.nodes) {
-    if (n.entry) {
+    if (n.entry || !hasIncoming.has(n.id)) {
       depth.set(n.id, 0);
       queue.push(n.id);
     }
@@ -104,8 +107,9 @@ function renderSvg(graph: FlowGraph): string {
     const cls = [
       'node',
       `node-${p.kind}`,
-      p.entry ? 'node-entry' : '',
-      p.reachable ? '' : 'node-unreachable',
+      p.external ? 'node-external' : '',
+      !p.external && p.entry ? 'node-entry' : '',
+      !p.external && !p.reachable ? 'node-unreachable' : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -129,10 +133,10 @@ function renderSvg(graph: FlowGraph): string {
   );
 }
 
-export function showFlowGraphPanel(graph: FlowGraph): void {
+export function showFlowGraphPanel(graph: FlowGraph, title = "Ren'Py Story Flow"): void {
   const panel = vscode.window.createWebviewPanel(
     'renpyAnalytics.flowGraph',
-    "Ren'Py Story Flow",
+    title,
     vscode.ViewColumn.Beside,
     { enableScripts: true }
   );
@@ -157,6 +161,8 @@ export function showFlowGraphPanel(graph: FlowGraph): void {
   .node-unreachable rect { stroke: var(--vscode-errorForeground, #f14c4c); stroke-width: 2; }
   .node-unreachable text { fill: var(--vscode-errorForeground, #f14c4c); }
   .node-dynamic rect { stroke-dasharray: 4 3; }
+  .node-external rect { stroke-dasharray: 4 3; opacity: 0.55; }
+  .node-external text { opacity: 0.6; font-style: italic; }
   .edge { fill: none; stroke: var(--vscode-editorWidget-border, #888); stroke-width: 1.3; }
   .edge-fallthrough { stroke-dasharray: 5 4; opacity: 0.6; }
   .edge-call { stroke-dasharray: 2 3; }

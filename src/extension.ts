@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
 import { analyzeChoices } from './core/choiceConsequences';
 import { computeFileInsights, estimatePlaytime } from './core/fileInsights';
-import { buildFlowGraph, toDot } from './core/flowGraph';
+import { buildFlowGraph, filterGraphToFile, FlowGraph, toDot } from './core/flowGraph';
 import { computeFoldingRanges } from './core/folding';
 import {
   ALL_FOOTER_SECTIONS,
@@ -16,6 +16,7 @@ import { analyzeFlow, FlowAnalysis } from './core/graph';
 import { computeMetrics } from './core/metrics';
 import { FileModel } from './core/model';
 import { parseRpy } from './core/parser';
+import { samePath } from './core/paths';
 import { CurrentFileTreeProvider } from './currentFileView';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
@@ -90,11 +91,6 @@ interface AnalysisResult {
   safety: SaveSafetyFinding[];
   speakers: SpeakerFinding[];
   metrics: ReturnType<typeof computeMetrics>;
-}
-
-function samePath(a: string, b: string): boolean {
-  const norm = (p: string): string => p.replace(/\\/g, '/').toLowerCase();
-  return norm(a) === norm(b);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -324,19 +320,56 @@ export function activate(context: vscode.ExtensionContext): void {
       showFlowGraphPanel(buildFlowGraph(models, flow));
     }),
 
+    vscode.commands.registerCommand('renpy-analytics.showFlowGraphForFile', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isRenpyDoc(editor.document)) {
+        void vscode.window.showWarningMessage('Open a .rpy file to show its flow graph.');
+        return;
+      }
+      const { models, flow } = await runAnalysis();
+      const fsPath = editor.document.uri.fsPath;
+      if (!models.some((m) => samePath(m.path, fsPath))) {
+        void vscode.window.showWarningMessage(
+          "File is outside the analyzed scope — check the game folder setting."
+        );
+        return;
+      }
+      const graph = filterGraphToFile(buildFlowGraph(models, flow), fsPath);
+      const name = vscode.workspace.asRelativePath(fsPath);
+      showFlowGraphPanel(graph, `Story Flow — ${name}`);
+    }),
+
     vscode.commands.registerCommand('renpy-analytics.exportDot', async () => {
       const { models, flow } = await runAnalysis();
+      let graph: FlowGraph = buildFlowGraph(models, flow);
+      let suggestedName = 'renpy-flow.dot';
+      const editor = vscode.window.activeTextEditor;
+      if (editor && isRenpyDoc(editor.document)) {
+        const fsPath = editor.document.uri.fsPath;
+        if (models.some((m) => samePath(m.path, fsPath))) {
+          const rel = vscode.workspace.asRelativePath(fsPath);
+          const picked = await vscode.window.showQuickPick(
+            [
+              { label: 'Whole project', scope: 'project' as const },
+              { label: `Current file only (${rel})`, scope: 'file' as const },
+            ],
+            { title: 'Export flow graph for…' }
+          );
+          if (!picked) return;
+          if (picked.scope === 'file') {
+            graph = filterGraphToFile(graph, fsPath);
+            suggestedName = `${rel.replace(/[\\/]/g, '_').replace(/\.rpym?$/, '')}-flow.dot`;
+          }
+        }
+      }
       const folder = vscode.workspace.workspaceFolders?.[0];
       const uri = await vscode.window.showSaveDialog({
-        defaultUri: folder ? vscode.Uri.joinPath(folder.uri, 'renpy-flow.dot') : undefined,
+        defaultUri: folder ? vscode.Uri.joinPath(folder.uri, suggestedName) : undefined,
         filters: { 'Graphviz DOT': ['dot', 'gv'] },
         title: 'Export story flow graph as Graphviz DOT',
       });
       if (!uri) return;
-      await vscode.workspace.fs.writeFile(
-        uri,
-        Buffer.from(toDot(buildFlowGraph(models, flow)), 'utf8')
-      );
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(toDot(graph), 'utf8'));
       void vscode.window.showInformationMessage(
         `Flow graph exported. Render with Graphviz (dot -Tsvg) or a DOT preview extension.`
       );

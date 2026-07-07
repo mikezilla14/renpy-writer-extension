@@ -6,6 +6,15 @@ function normalize(p: string, caseInsensitive: boolean): string {
   return n;
 }
 
+/** True when the two paths refer to the same file (separator/case tolerant). */
+export function samePath(
+  a: string,
+  b: string,
+  caseInsensitive: boolean = process.platform === 'win32'
+): boolean {
+  return normalize(a, caseInsensitive) === normalize(b, caseInsensitive);
+}
+
 /** True when `p` is `root` or lives underneath it. */
 export function isUnder(
   root: string,
