@@ -1,7 +1,9 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
-import { computeFileInsights } from './core/fileInsights';
+import { analyzeChoices } from './core/choiceConsequences';
+import { computeFileInsights, estimatePlaytime } from './core/fileInsights';
+import { buildFlowGraph, toDot } from './core/flowGraph';
 import { computeFoldingRanges } from './core/folding';
 import {
   ALL_FOOTER_SECTIONS,
@@ -18,6 +20,7 @@ import { CurrentFileTreeProvider } from './currentFileView';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
 import { analyzeSpeakers, SpeakerFinding } from './core/speakers';
+import { showFlowGraphPanel } from './graphView';
 import { EXCLUDE_GLOB, WorkspaceIndex } from './workspaceIndex';
 
 const SELECTOR: vscode.DocumentSelector = [
@@ -34,6 +37,34 @@ function isRenpyDoc(doc: vscode.TextDocument): boolean {
 
 function config(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration('renpy-analytics');
+}
+
+class ChoiceConsequenceLensProvider implements vscode.CodeLensProvider {
+  private cache = new Map<string, { version: number; lenses: vscode.CodeLens[] }>();
+  private emitter = new vscode.EventEmitter<void>();
+  readonly onDidChangeCodeLenses = this.emitter.event;
+
+  invalidate(): void {
+    this.cache.clear();
+    this.emitter.fire();
+  }
+
+  provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+    if (!config().get<boolean>('codeLens.enabled', true)) return [];
+    const key = document.uri.toString();
+    const hit = this.cache.get(key);
+    if (hit && hit.version === document.version) return hit.lenses;
+    const model = parseRpy(document.uri.fsPath, document.getText());
+    const lenses = analyzeChoices(model).map(
+      (s) =>
+        new vscode.CodeLens(new vscode.Range(s.line, 0, s.line, 0), {
+          title: s.summary,
+          command: '',
+        })
+    );
+    this.cache.set(key, { version: document.version, lenses });
+    return lenses;
+  }
 }
 
 class RenpyFoldingProvider implements vscode.FoldingRangeProvider {
@@ -73,13 +104,15 @@ export function activate(context: vscode.ExtensionContext): void {
   const speakerDiagnostics = vscode.languages.createDiagnosticCollection('renpy-speakers');
   const tree = new AnalysisTreeProvider();
   const currentFileTree = new CurrentFileTreeProvider();
+  const lensProvider = new ChoiceConsequenceLensProvider();
   context.subscriptions.push(
     safetyDiagnostics,
     flowDiagnostics,
     speakerDiagnostics,
     vscode.window.registerTreeDataProvider('renpyAnalytics.analysis', tree),
     vscode.window.registerTreeDataProvider('renpyAnalytics.currentFile', currentFileTree),
-    vscode.languages.registerFoldingRangeProvider(SELECTOR, new RenpyFoldingProvider())
+    vscode.languages.registerFoldingRangeProvider(SELECTOR, new RenpyFoldingProvider()),
+    vscode.languages.registerCodeLensProvider(SELECTOR, lensProvider)
   );
 
   let lastAnalysis: AnalysisResult | undefined;
@@ -122,7 +155,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const metrics = computeMetrics(models);
     publishDiagnostics(flow, safety, speakers);
     const gameDir = config().get<string>('gameDir', '').trim();
-    tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace');
+    const wpm = config().get<number>('readingSpeedWpm', 200);
+    const playtime = estimatePlaytime(models, flow, wpm);
+    tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace', playtime);
     lastAnalysis = { models, flow, safety, speakers, metrics };
     updateCurrentFileView();
     return lastAnalysis;
@@ -186,6 +221,20 @@ export function activate(context: vscode.ExtensionContext): void {
       const arr = flowByFile.get(l.file) ?? [];
       arr.push(d);
       flowByFile.set(l.file, arr);
+    }
+    for (const de of flow.deadEnds) {
+      const d = new vscode.Diagnostic(
+        new vscode.Range(de.line, 0, de.line, 1000),
+        `Label '${de.name}' is reachable but its flow runs off the end of the file without ` +
+          `'return' or 'jump' — Ren'Py raises an error when the script runs out. ` +
+          `End the label with 'return' or jump to the next scene.`,
+        vscode.DiagnosticSeverity.Warning
+      );
+      d.source = 'renpy-analytics';
+      d.code = 'dead-end';
+      const arr = flowByFile.get(de.file) ?? [];
+      arr.push(d);
+      flowByFile.set(de.file, arr);
     }
     flowDiagnostics.clear();
     for (const [file, ds] of flowByFile) flowDiagnostics.set(vscode.Uri.file(file), ds);
@@ -267,6 +316,29 @@ export function activate(context: vscode.ExtensionContext): void {
         safety.length === 0
           ? "Ren'Py Analytics: no save-file safety risks found."
           : `Ren'Py Analytics: ${safety.length} save-file safety finding${safety.length === 1 ? '' : 's'} — see the Problems panel.`
+      );
+    }),
+
+    vscode.commands.registerCommand('renpy-analytics.showFlowGraph', async () => {
+      const { models, flow } = await runAnalysis();
+      showFlowGraphPanel(buildFlowGraph(models, flow));
+    }),
+
+    vscode.commands.registerCommand('renpy-analytics.exportDot', async () => {
+      const { models, flow } = await runAnalysis();
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri: folder ? vscode.Uri.joinPath(folder.uri, 'renpy-flow.dot') : undefined,
+        filters: { 'Graphviz DOT': ['dot', 'gv'] },
+        title: 'Export story flow graph as Graphviz DOT',
+      });
+      if (!uri) return;
+      await vscode.workspace.fs.writeFile(
+        uri,
+        Buffer.from(toDot(buildFlowGraph(models, flow)), 'utf8')
+      );
+      void vscode.window.showInformationMessage(
+        `Flow graph exported. Render with Graphviz (dot -Tsvg) or a DOT preview extension.`
       );
     }),
 
@@ -367,7 +439,10 @@ export function activate(context: vscode.ExtensionContext): void {
       scheduleRefresh();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('renpy-analytics')) scheduleRefresh();
+      if (e.affectsConfiguration('renpy-analytics')) {
+        lensProvider.invalidate();
+        scheduleRefresh();
+      }
     }),
     vscode.window.onDidChangeActiveTextEditor(() => updateCurrentFileView())
   );

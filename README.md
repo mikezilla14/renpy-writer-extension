@@ -4,7 +4,7 @@ Structure folding, save-file safety checks, and (coming) story-flow analysis and
 
 Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the full roadmap.
 
-## Features (0.3 — M1–M3)
+## Features (0.4 — M1–M4)
 
 ### Structural folding
 
@@ -58,6 +58,29 @@ Below the project tree, the **Current File** pane follows the active editor and 
 - **Connections** — which labels in other files jump/call into this file, and where this file jumps out to.
 
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
+
+### Choice-consequence CodeLens
+
+Above every menu choice, a summary of what picking it does — stat changes, function calls, and where the story goes:
+
+```
++corruption  story.set_prologue_why_write=…  ƒ apply_balanced_effect  → day100_2_evening_flashback
+"To catalogue what power hides. [[Curious, corrupting]]":
+```
+
+Consequence extraction adapted from [universal-renpy-walkthrough](https://github.com/BCassO/universal-renpy-walkthrough) (MIT), computed statically at edit time. Toggle with `renpy-analytics.codeLens.enabled`.
+
+### Story flow graph
+
+**Ren'Py: Show Story Flow Graph** opens an interactive map of the whole story: label nodes plus menu-choice nodes, jump/call/fall-through edges, entry points outlined green, inaccessible labels red, dynamic jumps as a dashed pseudo-node. Drag to pan, scroll to zoom, click any node to open it in the editor. **Ren'Py: Export Flow Graph (DOT)** writes the same graph as Graphviz DOT for rendering with `dot -Tsvg` or any DOT viewer.
+
+### Dead-end detection
+
+Reachable labels whose flow runs off the end of the file without `return`/`jump` — a runtime error waiting to happen — are flagged in the Problems panel and listed in the Project Analysis view.
+
+### Playtime estimate
+
+The Project Analysis view shows an estimated total playtime (all reachable dialogue at `renpy-analytics.readingSpeedWpm`) — an upper bound, since branches are mutually exclusive.
 
 ### Generated file footer
 

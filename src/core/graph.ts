@@ -39,11 +39,19 @@ export interface InaccessibleLabel {
   line: number;
 }
 
+/** A reachable label whose flow runs off the end of the file without return/jump */
+export interface DeadEnd {
+  name: string;
+  file: string;
+  line: number;
+}
+
 export interface FlowAnalysis {
   labelCount: number;
   roots: string[];
   reachable: Set<string>;
   inaccessible: InaccessibleLabel[];
+  deadEnds: DeadEnd[];
   /** Count of jumps/calls whose target is a runtime expression */
   dynamicJumps: number;
   /** name -> outgoing targets, for later graph visualization / export */
@@ -88,6 +96,7 @@ export function analyzeFlow(models: FileModel[], extraEntryPoints: string[] = []
   }
 
   let dynamicJumps = 0;
+  const deadEndCandidates: DeadEnd[] = [];
 
   for (const m of models) {
     const terminators = new Set<number>(m.returns);
@@ -113,13 +122,15 @@ export function analyzeFlow(models: FileModel[], extraEntryPoints: string[] = []
     }
 
     // Fall-through: file-ordered labels; a label whose last significant line
-    // is not a return/jump continues into the next label.
+    // is not a return/jump continues into the next label — or, when there is
+    // no next label, runs off the end of the file (a dead end at runtime).
     const ordered = [...m.labels].sort((a, b) => a.headerLine - b.headerLine);
     for (let i = 0; i < ordered.length; i++) {
       const cur = ordered[i];
+      if (terminators.has(cur.endLine)) continue;
       const next = ordered.find((l) => l.headerLine > cur.endLine);
-      if (!next) continue;
-      if (!terminators.has(cur.endLine)) addEdge(cur.name, next.name);
+      if (next) addEdge(cur.name, next.name);
+      else deadEndCandidates.push({ name: cur.name, file: m.path, line: cur.headerLine });
     }
 
     for (const l of m.labels) {
@@ -149,11 +160,16 @@ export function analyzeFlow(models: FileModel[], extraEntryPoints: string[] = []
   }
   inaccessible.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1));
 
+  // A dead end only matters when the player can actually get there
+  const deadEnds = deadEndCandidates.filter((d) => reachable.has(d.name));
+  deadEnds.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file < b.file ? -1 : 1));
+
   return {
     labelCount: allLabels.size,
     roots: [...roots].sort(),
     reachable,
     inaccessible,
+    deadEnds,
     dynamicJumps,
     edges,
   };

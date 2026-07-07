@@ -82,6 +82,26 @@ label from_screen:
     expect(analyzeFlow([m], ['custom_entry']).inaccessible).toEqual([]);
   });
 
+  it('flags reachable labels that run off the end of the file as dead ends', () => {
+    const m = parseRpy(
+      'x.rpy',
+      'label start:\n    "Last line of the game with no return."\n'
+    );
+    const f = analyzeFlow([m]);
+    expect(f.deadEnds).toHaveLength(1);
+    expect(f.deadEnds[0]).toMatchObject({ name: 'start', file: 'x.rpy' });
+  });
+
+  it('does not flag unreachable or properly terminated labels as dead ends', () => {
+    const m = parseRpy(
+      'x.rpy',
+      'label start:\n    return\n\nlabel orphan:\n    "dangling"\n'
+    );
+    const f = analyzeFlow([m]);
+    expect(f.deadEnds).toEqual([]); // orphan dangles but is unreachable
+    expect(f.inaccessible.map((l) => l.name)).toEqual(['orphan']);
+  });
+
   it('reaches local labels via resolved local jumps', () => {
     const m = parseRpy(
       'x.rpy',

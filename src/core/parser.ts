@@ -222,7 +222,13 @@ function handlePythonLine(model: FileModel, s: string, line: number, context: As
   }
   const asg = ASSIGN_RE.exec(s);
   if (asg) {
-    model.assignments.push({ name: stripStore(asg[1]), op: asg[2], line, context });
+    model.assignments.push({
+      name: stripStore(asg[1]),
+      op: asg[2],
+      rhs: asg[3].trim(),
+      line,
+      context,
+    });
   }
   const jc = /\brenpy\.(jump|call)\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/.exec(s);
   if (jc) {

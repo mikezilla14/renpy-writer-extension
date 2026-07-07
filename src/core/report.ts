@@ -59,6 +59,16 @@ export function buildMarkdownReport(input: ReportInput): string {
     lines.push('');
   }
 
+  lines.push('## Dead ends', '');
+  if (flow.deadEnds.length === 0) {
+    lines.push('None — every reachable flow ends in return/jump.', '');
+  } else {
+    for (const d of flow.deadEnds) {
+      lines.push(`- \`${d.name}\` runs off the end of ${rel(d.file)}:${d.line + 1}`);
+    }
+    lines.push('');
+  }
+
   const speakers = input.speakers ?? [];
   lines.push('## Speaker consistency', '');
   if (speakers.length === 0) {
@@ -116,6 +126,11 @@ export function buildJsonReport(input: ReportInput): string {
         name: l.name,
         file: rel(l.file),
         line: l.line + 1,
+      })),
+      deadEnds: flow.deadEnds.map((d) => ({
+        name: d.name,
+        file: rel(d.file),
+        line: d.line + 1,
       })),
       saveSafety: safety.map((f) => ({
         rule: f.rule,

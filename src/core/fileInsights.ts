@@ -57,6 +57,29 @@ export interface FileInsights {
   outgoing: OutgoingEdge[];
 }
 
+/**
+ * Upper-bound playtime: all dialogue inside reachable labels at the given
+ * reading speed. (A single route is shorter; branches are mutually exclusive.)
+ */
+export function estimatePlaytime(
+  models: FileModel[],
+  flow: FlowAnalysis,
+  wpm = 200
+): { words: number; minutes: number } {
+  let words = 0;
+  for (const m of models) {
+    for (const l of m.labels) {
+      if (!flow.reachable.has(l.name)) continue;
+      for (const d of m.dialogue) {
+        if (d.line > l.headerLine && d.line <= l.endLine) {
+          words += countWords(normalizeDialogue(d.text));
+        }
+      }
+    }
+  }
+  return { words, minutes: words / wpm };
+}
+
 export function computeFileInsights(
   target: FileModel,
   allModels: FileModel[],

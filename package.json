@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "mikezilla",
   "license": "MIT",
   "engines": {
@@ -59,6 +59,14 @@
       {
         "command": "renpy-analytics.generateAllFooters",
         "title": "Ren'Py: Generate Footers for All Files"
+      },
+      {
+        "command": "renpy-analytics.showFlowGraph",
+        "title": "Ren'Py: Show Story Flow Graph"
+      },
+      {
+        "command": "renpy-analytics.exportDot",
+        "title": "Ren'Py: Export Flow Graph (DOT)"
       }
     ],
     "viewsContainers": {
@@ -126,6 +134,11 @@
           "type": "boolean",
           "default": false,
           "description": "Regenerate the footer on save for files that already contain one (files without a footer are never touched)."
+        },
+        "renpy-analytics.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a consequence summary above each menu choice (stat changes, function calls, jump targets)."
         },
         "renpy-analytics.readingSpeedWpm": {
           "type": "number",

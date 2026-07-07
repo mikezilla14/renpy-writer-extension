@@ -73,7 +73,8 @@ export class AnalysisTreeProvider extends BaseTreeProvider {
     metrics: ProjectMetrics,
     safety: SaveSafetyFinding[],
     speakers: SpeakerFinding[],
-    scopeLabel: string
+    scopeLabel: string,
+    playtime: { words: number; minutes: number }
   ): void {
     const rel = (p: string): string => vscode.workspace.asRelativePath(p);
 
@@ -140,6 +141,25 @@ export class AnalysisTreeProvider extends BaseTreeProvider {
             line: f.line,
           }));
 
+    const deadEndChildren: TreeNode[] =
+      flow.deadEnds.length === 0
+        ? [{ label: 'None — all flows end in return/jump', icon: new vscode.ThemeIcon('check') }]
+        : flow.deadEnds.map((d) => ({
+            label: d.name,
+            description: `${rel(d.file)}:${d.line + 1}`,
+            tooltip:
+              'Reachable label whose flow runs off the end of the file without return/jump — the game errors at runtime',
+            icon: new vscode.ThemeIcon('stop-circle'),
+            file: d.file,
+            line: d.line,
+          }));
+
+    const minutes = Math.round(playtime.minutes);
+    const playtimeLabel =
+      minutes >= 60
+        ? `~${Math.floor(minutes / 60)}h ${minutes % 60}m`
+        : `~${Math.max(minutes, 1)} min`;
+
     this.roots = [
       {
         label: `Scope: ${scopeLabel}`,
@@ -149,9 +169,21 @@ export class AnalysisTreeProvider extends BaseTreeProvider {
         commandId: 'renpy-analytics.selectGameFolder',
       },
       {
+        label: `Estimated playtime: ${playtimeLabel}`,
+        description: `${fmt(playtime.words)} reachable words`,
+        tooltip:
+          'Upper bound: all dialogue in reachable labels at the configured reading speed. A single route is shorter since branches are mutually exclusive.',
+        icon: new vscode.ThemeIcon('watch'),
+      },
+      {
         label: `Inaccessible labels (${fmt(flow.inaccessible.length)})`,
         icon: new vscode.ThemeIcon('debug-disconnect'),
         children: inaccessibleChildren,
+      },
+      {
+        label: `Dead ends (${fmt(flow.deadEnds.length)})`,
+        icon: new vscode.ThemeIcon('stop-circle'),
+        children: deadEndChildren,
       },
       {
         label: `Save-file safety (${fmt(safety.length)})`,

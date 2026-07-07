@@ -70,6 +70,8 @@ export interface Assignment {
   op: string;
   /** Method name for in-place mutations (append, update, ...) */
   mutation?: string;
+  /** Right-hand side of the assignment (absent for mutations) */
+  rhs?: string;
   line: number;
   context: AssignContext;
 }
