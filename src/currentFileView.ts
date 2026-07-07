@@ -47,6 +47,18 @@ export class CurrentFileTreeProvider extends BaseTreeProvider {
         {
           label: `${fmt(insights.labels)} labels · ${fmt(insights.menus)} menus (${fmt(insights.choices)} choices)`,
           icon: new vscode.ThemeIcon('list-tree'),
+          collapsed: true,
+          children: insights.labelWords.length
+            ? [...insights.labelWords]
+                .sort((a, b) => a.line - b.line)
+                .map((l) => ({
+                  label: l.name,
+                  description: `line ${l.line + 1} · ${fmt(l.words)} words`,
+                  icon: new vscode.ThemeIcon('symbol-key'),
+                  file: insights.path,
+                  line: l.line,
+                }))
+            : undefined,
         },
         {
           label: `${fmt(insights.dialogueLines)} dialogue lines · narration ${narratorPct}%`,
