@@ -47,6 +47,16 @@ Disable entirely with the `renpy-analytics.saveSafety.enabled` setting. Run on d
 
 **Ren'Py: Export Analysis Report** writes the full analysis as Markdown (for humans) or JSON (for CI).
 
+### Current File pane
+
+Below the project tree, the **Current File** pane follows the active editor and shows writing/narrative stats for just that script:
+
+- **Overview** — word count and reading time (`renpy-analytics.readingSpeedWpm`, default 200), labels/menus/choices, dialogue lines with narration share, average sentence length, and pacing (words per choice; "kinetic" when the file has no choices).
+- **Inaccessible labels** and **Issues** (save-safety + speaker findings) scoped to this file, click-to-jump.
+- **Characters** — per-character words with share-of-file %, line counts, and average sentence length.
+- **Scenes** — dialogue words per label, largest first, for spotting unbalanced scenes.
+- **Connections** — which labels in other files jump/call into this file, and where this file jumps out to.
+
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
 
 ### Generated file footer

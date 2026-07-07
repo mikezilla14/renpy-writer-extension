@@ -4,7 +4,7 @@ import { avgSentenceLength, ProjectMetrics } from './core/metrics';
 import { SaveSafetyFinding } from './core/saveSafety';
 import { SpeakerFinding } from './core/speakers';
 
-interface TreeNode {
+export interface TreeNode {
   label: string;
   description?: string;
   tooltip?: string;
@@ -13,19 +13,60 @@ interface TreeNode {
   line?: number;
   /** Command to run on click (takes precedence over file/line navigation) */
   commandId?: string;
+  /** Render group initially collapsed instead of expanded */
+  collapsed?: boolean;
   children?: TreeNode[];
 }
 
-function fmt(n: number): string {
+export function fmt(n: number): string {
   return n.toLocaleString('en-US');
 }
 
-export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
-  private roots: TreeNode[] = [
-    { label: 'Run "Ren\'Py: Analyze Project" to populate', icon: new vscode.ThemeIcon('info') },
-  ];
+export abstract class BaseTreeProvider implements vscode.TreeDataProvider<TreeNode> {
+  protected roots: TreeNode[] = [];
   private emitter = new vscode.EventEmitter<TreeNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
+
+  protected refresh(): void {
+    this.emitter.fire(undefined);
+  }
+
+  getTreeItem(node: TreeNode): vscode.TreeItem {
+    const item = new vscode.TreeItem(
+      node.label,
+      node.children
+        ? node.collapsed
+          ? vscode.TreeItemCollapsibleState.Collapsed
+          : vscode.TreeItemCollapsibleState.Expanded
+        : vscode.TreeItemCollapsibleState.None
+    );
+    item.description = node.description;
+    item.tooltip = node.tooltip;
+    item.iconPath = node.icon;
+    if (node.commandId) {
+      item.command = { command: node.commandId, title: node.label };
+    } else if (node.file !== undefined && node.line !== undefined) {
+      item.command = {
+        command: 'vscode.open',
+        title: 'Open',
+        arguments: [
+          vscode.Uri.file(node.file),
+          { selection: new vscode.Range(node.line, 0, node.line, 0) },
+        ],
+      };
+    }
+    return item;
+  }
+
+  getChildren(node?: TreeNode): TreeNode[] {
+    return node ? node.children ?? [] : this.roots;
+  }
+}
+
+export class AnalysisTreeProvider extends BaseTreeProvider {
+  protected roots: TreeNode[] = [
+    { label: 'Run "Ren\'Py: Analyze Project" to populate', icon: new vscode.ThemeIcon('info') },
+  ];
 
   setResults(
     flow: FlowAnalysis,
@@ -133,35 +174,6 @@ export class AnalysisTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         children: charChildren,
       },
     ];
-    this.emitter.fire(undefined);
-  }
-
-  getTreeItem(node: TreeNode): vscode.TreeItem {
-    const item = new vscode.TreeItem(
-      node.label,
-      node.children
-        ? vscode.TreeItemCollapsibleState.Expanded
-        : vscode.TreeItemCollapsibleState.None
-    );
-    item.description = node.description;
-    item.tooltip = node.tooltip;
-    item.iconPath = node.icon;
-    if (node.commandId) {
-      item.command = { command: node.commandId, title: node.label };
-    } else if (node.file !== undefined && node.line !== undefined) {
-      item.command = {
-        command: 'vscode.open',
-        title: 'Open',
-        arguments: [
-          vscode.Uri.file(node.file),
-          { selection: new vscode.Range(node.line, 0, node.line, 0) },
-        ],
-      };
-    }
-    return item;
-  }
-
-  getChildren(node?: TreeNode): TreeNode[] {
-    return node ? node.children ?? [] : this.roots;
+    this.refresh();
   }
 }

@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
+import { computeFileInsights } from './core/fileInsights';
 import { computeFoldingRanges } from './core/folding';
 import {
   ALL_FOOTER_SECTIONS,
@@ -11,7 +12,9 @@ import {
 } from './core/footer';
 import { analyzeFlow, FlowAnalysis } from './core/graph';
 import { computeMetrics } from './core/metrics';
+import { FileModel } from './core/model';
 import { parseRpy } from './core/parser';
+import { CurrentFileTreeProvider } from './currentFileView';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
 import { analyzeSpeakers, SpeakerFinding } from './core/speakers';
@@ -51,10 +54,16 @@ class RenpyFoldingProvider implements vscode.FoldingRangeProvider {
 }
 
 interface AnalysisResult {
+  models: FileModel[];
   flow: FlowAnalysis;
   safety: SaveSafetyFinding[];
   speakers: SpeakerFinding[];
   metrics: ReturnType<typeof computeMetrics>;
+}
+
+function samePath(a: string, b: string): boolean {
+  const norm = (p: string): string => p.replace(/\\/g, '/').toLowerCase();
+  return norm(a) === norm(b);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -63,13 +72,44 @@ export function activate(context: vscode.ExtensionContext): void {
   const flowDiagnostics = vscode.languages.createDiagnosticCollection('renpy-flow');
   const speakerDiagnostics = vscode.languages.createDiagnosticCollection('renpy-speakers');
   const tree = new AnalysisTreeProvider();
+  const currentFileTree = new CurrentFileTreeProvider();
   context.subscriptions.push(
     safetyDiagnostics,
     flowDiagnostics,
     speakerDiagnostics,
     vscode.window.registerTreeDataProvider('renpyAnalytics.analysis', tree),
+    vscode.window.registerTreeDataProvider('renpyAnalytics.currentFile', currentFileTree),
     vscode.languages.registerFoldingRangeProvider(SELECTOR, new RenpyFoldingProvider())
   );
+
+  let lastAnalysis: AnalysisResult | undefined;
+
+  const updateCurrentFileView = (): void => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !isRenpyDoc(editor.document)) {
+      currentFileTree.setMessage('Open a .rpy file to see its analysis');
+      return;
+    }
+    if (!lastAnalysis) {
+      currentFileTree.setMessage('Analyzing…');
+      return;
+    }
+    const fsPath = editor.document.uri.fsPath;
+    const model = lastAnalysis.models.find((m) => samePath(m.path, fsPath));
+    if (!model) {
+      currentFileTree.setMessage(
+        'File is outside the analyzed scope — check the game folder (Scope) setting'
+      );
+      return;
+    }
+    const wpm = config().get<number>('readingSpeedWpm', 200);
+    const insights = computeFileInsights(model, lastAnalysis.models, lastAnalysis.flow, wpm);
+    currentFileTree.setResults(
+      insights,
+      lastAnalysis.safety.filter((f) => samePath(f.file, model.path)),
+      lastAnalysis.speakers.filter((f) => samePath(f.file, model.path))
+    );
+  };
 
   const runAnalysis = async (): Promise<AnalysisResult> => {
     const models = await index.getModels();
@@ -83,7 +123,9 @@ export function activate(context: vscode.ExtensionContext): void {
     publishDiagnostics(flow, safety, speakers);
     const gameDir = config().get<string>('gameDir', '').trim();
     tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace');
-    return { flow, safety, speakers, metrics };
+    lastAnalysis = { models, flow, safety, speakers, metrics };
+    updateCurrentFileView();
+    return lastAnalysis;
   };
 
   const publishDiagnostics = (
@@ -326,7 +368,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('renpy-analytics')) scheduleRefresh();
-    })
+    }),
+    vscode.window.onDidChangeActiveTextEditor(() => updateCurrentFileView())
   );
 
   scheduleRefresh();

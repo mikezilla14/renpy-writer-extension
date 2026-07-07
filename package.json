@@ -75,6 +75,10 @@
         {
           "id": "renpyAnalytics.analysis",
           "name": "Project Analysis"
+        },
+        {
+          "id": "renpyAnalytics.currentFile",
+          "name": "Current File"
         }
       ]
     },
@@ -122,6 +126,11 @@
           "type": "boolean",
           "default": false,
           "description": "Regenerate the footer on save for files that already contain one (files without a footer are never touched)."
+        },
+        "renpy-analytics.readingSpeedWpm": {
+          "type": "number",
+          "default": 200,
+          "description": "Words-per-minute used for reading-time estimates in the Current File view."
         },
         "renpy-analytics.dynamicJumpMode": {
           "type": "string",
