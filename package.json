@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "mikezilla",
   "license": "MIT",
   "icon": "media/icon.png",
