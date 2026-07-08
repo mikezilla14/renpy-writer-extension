@@ -134,6 +134,26 @@ Regeneration replaces the block in place — never duplicates it — and preserv
 
 By default every `.rpy` in the workspace is analyzed. In a monorepo with several copies of a game (e.g. `prod/` and `nonprod/`), run **Ren'Py: Select Game Folder** — it detects candidate game roots (folders containing `options.rpy`/`script.rpy`) and saves your pick to the workspace setting `renpy-analytics.gameDir`. The current scope is shown at the top of the Ren'Py Analytics view; click it to change.
 
+## Commands (Ctrl+Shift+P)
+
+All commands are prefixed `Ren'Py:` in the command palette. First-time users can also follow the **Get started with Ren'Py Analytics** walkthrough (Help → Get Started), which runs each of the core commands with one click.
+
+| Command | What it does |
+|---|---|
+| `Ren'Py: Analyze Project` | Build the flow graph + metrics; populate views and Problems panel |
+| `Ren'Py: Show Story Flow Graph` | Interactive story map (whole project) |
+| `Ren'Py: Show Story Flow Graph (Current File)` | Story map scoped to the active script |
+| `Ren'Py: Export Flow Graph (DOT)` | Graphviz DOT export of either graph |
+| `Ren'Py: Playtest From Here` | Launch the game warped to the cursor line |
+| `Ren'Py: Fold All Labels` | Collapse the file to its label skeleton |
+| `Ren'Py: Fold All Menus` | Collapse menu blocks and choices |
+| `Ren'Py: Fold All Labels and Menus` | Collapse everything foldable |
+| `Ren'Py: Analyze Save-File Safety (Workspace)` | Save-safety scan on demand |
+| `Ren'Py: Export Analysis Report` | Markdown (humans) or JSON (CI) report |
+| `Ren'Py: Generate File Footer` | Append/update the summary footer in the active file |
+| `Ren'Py: Generate Footers for All Files` | Same, workspace-wide |
+| `Ren'Py: Select Game Folder` | Scope analysis to one game root (monorepos) |
+
 ## Development
 
 ```sh

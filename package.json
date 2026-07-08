@@ -5,6 +5,30 @@
   "version": "0.6.0",
   "publisher": "mikezilla",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikezilla14/renpy-writer-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikezilla14/renpy-writer-extension/issues"
+  },
+  "homepage": "https://github.com/mikezilla14/renpy-writer-extension#readme",
+  "keywords": [
+    "renpy",
+    "ren'py",
+    "visual novel",
+    "writing",
+    "story graph",
+    "folding",
+    "analytics",
+    "dialogue",
+    "interactive fiction"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -119,6 +143,70 @@
         }
       ]
     },
+    "walkthroughs": [
+      {
+        "id": "renpyAnalytics.gettingStarted",
+        "title": "Get started with Ren'Py Analytics",
+        "description": "Map your story, catch save-file bugs, track flags, and playtest from the cursor.",
+        "steps": [
+          {
+            "id": "analyze",
+            "title": "Analyze your project",
+            "description": "Scan every .rpy file: story flow, inaccessible labels, dead ends, save-file risks, and writing metrics.\n[Analyze Project](command:renpy-analytics.analyzeProject)",
+            "media": {
+              "markdown": "media/walkthrough/analyze.md"
+            },
+            "completionEvents": [
+              "onCommand:renpy-analytics.analyzeProject"
+            ]
+          },
+          {
+            "id": "flowgraph",
+            "title": "See your story as a map",
+            "description": "An interactive graph of every label and menu choice — entry points green, unreachable scenes red, conditions on the edges.\n[Show Story Flow Graph](command:renpy-analytics.showFlowGraph)",
+            "media": {
+              "markdown": "media/walkthrough/flowgraph.md"
+            },
+            "completionEvents": [
+              "onCommand:renpy-analytics.showFlowGraph"
+            ]
+          },
+          {
+            "id": "variables",
+            "title": "Track flags without a spreadsheet",
+            "description": "The Variables pane shows where every flag is declared, set (and by which choice), and gated — plus flags that can never trigger.\n[Open Ren'Py Analytics views](command:workbench.view.extension.renpy-analytics)",
+            "media": {
+              "markdown": "media/walkthrough/variables.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.view.extension.renpy-analytics"
+            ]
+          },
+          {
+            "id": "fold",
+            "title": "Fold to the story skeleton",
+            "description": "Collapse a script to its labels and menus to see the chapter at a glance.\n[Fold All Labels and Menus](command:renpy-analytics.foldAllLabelsAndMenus)",
+            "media": {
+              "markdown": "media/walkthrough/fold.md"
+            },
+            "completionEvents": [
+              "onCommand:renpy-analytics.foldAllLabelsAndMenus"
+            ]
+          },
+          {
+            "id": "playtest",
+            "title": "Playtest from the cursor",
+            "description": "Launch the game warped straight to the line you're editing — no replaying from the start.\n[Playtest From Here](command:renpy-analytics.playtestFromHere)",
+            "media": {
+              "markdown": "media/walkthrough/playtest.md"
+            },
+            "completionEvents": [
+              "onCommand:renpy-analytics.playtestFromHere"
+            ]
+          }
+        ]
+      }
+    ],
     "configuration": {
       "title": "Ren'Py Analytics",
       "properties": {
@@ -199,11 +287,13 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "test": "vitest run",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^5.4.5",
     "vitest": "^2.1.8"
   }
