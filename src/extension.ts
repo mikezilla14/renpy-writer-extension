@@ -16,7 +16,13 @@ import {
   hasFooter,
 } from './core/footer';
 import { analyzeFlow, FlowAnalysis } from './core/graph';
-import { computeMetrics } from './core/metrics';
+import { collectCharacterDisplayNames, computeMetrics } from './core/metrics';
+import { convertProse, extractSpeakers, slug } from './core/prose';
+import {
+  exportDialogueMarkdown,
+  planProofreadEdits,
+  replaceDialogueOnLine,
+} from './core/proofread';
 import { FileModel } from './core/model';
 import { parseRpy } from './core/parser';
 import { samePath } from './core/paths';
@@ -414,6 +420,143 @@ export function activate(context: vscode.ExtensionContext): void {
     );
   };
 
+  const pasteAsDialogue = async (): Promise<void> => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !isRenpyDoc(editor.document)) {
+      void vscode.window.showWarningMessage('Open a .rpy file to paste dialogue into.');
+      return;
+    }
+    const clip = await vscode.env.clipboard.readText();
+    if (!clip.trim()) {
+      void vscode.window.showInformationMessage('Clipboard is empty — copy your draft first.');
+      return;
+    }
+    const models = await index.getModels();
+    const displayNames = collectCharacterDisplayNames(models); // var -> display
+    const characterMap = new Map<string, string>();
+    for (const [v, d] of displayNames) {
+      if (!characterMap.has(d.toLowerCase())) characterMap.set(d.toLowerCase(), v);
+      characterMap.set(v.toLowerCase(), v);
+    }
+    const stringSpeakers = new Set<string>();
+    for (const name of extractSpeakers(clip)) {
+      const key = name.toLowerCase();
+      if (characterMap.has(key)) continue;
+      type Item = vscode.QuickPickItem & { action: 'slug' | 'string' | 'map'; variable?: string };
+      const items: Item[] = [
+        {
+          label: `$(add) Use new variable '${slug(name)}'`,
+          description: 'adds a TODO define comment above the paste',
+          action: 'slug',
+        },
+        {
+          label: `$(quote) Keep as string speaker "${name}"`,
+          description: 'ad-hoc one-off character',
+          action: 'string',
+        },
+        ...[...displayNames].map(
+          ([v, d]): Item => ({ label: `$(person) ${v}`, description: d, action: 'map', variable: v })
+        ),
+      ];
+      const picked = await vscode.window.showQuickPick(items, {
+        title: `Speaker "${name}" is not a defined character — how should it be written?`,
+      });
+      if (!picked) return; // cancelled
+      if (picked.action === 'string') stringSpeakers.add(key);
+      else if (picked.action === 'map' && picked.variable) characterMap.set(key, picked.variable);
+      // 'slug': leave unmapped — converter emits the slug + TODO define comment
+    }
+    const { rpy, unknown } = convertProse(clip, { characterMap, stringSpeakers });
+    if (!rpy) {
+      void vscode.window.showInformationMessage('Nothing convertible found in the clipboard.');
+      return;
+    }
+    const pos = editor.selection.active;
+    const indent = /^\s*/.exec(editor.document.lineAt(pos.line).text)![0];
+    const indented = rpy
+      .split('\n')
+      .map((l) => (l === '' ? '' : indent + l))
+      .join('\n');
+    const insertAt = new vscode.Position(pos.line, 0);
+    await editor.edit((eb) => eb.insert(insertAt, indented + '\n'));
+    void vscode.window.setStatusBarMessage(
+      `$(check) Pasted as Ren'Py dialogue${unknown.length ? ` — ${unknown.length} character(s) need defines (see TODO comment)` : ''}`,
+      8000
+    );
+  };
+
+  const exportDialogue = async (): Promise<void> => {
+    const models = await index.getModels();
+    const md = exportDialogueMarkdown(models, (p) => vscode.workspace.asRelativePath(p));
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    const uri = await vscode.window.showSaveDialog({
+      defaultUri: folder ? vscode.Uri.joinPath(folder.uri, 'dialogue-proofread.md') : undefined,
+      filters: { Markdown: ['md'] },
+      title: 'Export dialogue for proofreading',
+    });
+    if (!uri) return;
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(md, 'utf8'));
+    await vscode.window.showTextDocument(uri);
+    void vscode.window.showInformationMessage(
+      "Dialogue exported. Share it, collect edits, then run \"Ren'Py: Apply Proofread Dialogue\"."
+    );
+  };
+
+  const applyProofread = async (): Promise<void> => {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: { Markdown: ['md'] },
+      title: 'Select the edited proofreading document',
+    });
+    if (!picked?.length) return;
+    const md = Buffer.from(await vscode.workspace.fs.readFile(picked[0])).toString('utf8');
+    const models = await index.getModels();
+    const byRel = new Map<string, FileModel>();
+    for (const m of models) {
+      byRel.set(vscode.workspace.asRelativePath(m.path).replace(/\\/g, '/'), m);
+    }
+    const plan = planProofreadEdits(md, (rel) => byRel.get(rel.replace(/\\/g, '/')));
+    if (!plan.isExport && plan.edits.length === 0 && plan.unchanged === 0) {
+      void vscode.window.showErrorMessage(
+        "This file doesn't look like a Ren'Py Analytics dialogue export."
+      );
+      return;
+    }
+    const wsEdit = new vscode.WorkspaceEdit();
+    let applied = 0;
+    for (const e of plan.edits) {
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(e.file));
+      const raw = doc.lineAt(e.line).text;
+      const replaced = replaceDialogueOnLine(raw, e.newText, e.adhoc);
+      if (replaced === null) {
+        plan.skipped.push({
+          anchor: `${vscode.workspace.asRelativePath(e.file)}:${e.line + 1}`,
+          reason: 'line changed since export — apply manually',
+        });
+        continue;
+      }
+      wsEdit.replace(
+        doc.uri,
+        new vscode.Range(e.line, 0, e.line, raw.length),
+        replaced
+      );
+      applied++;
+    }
+    if (applied) await vscode.workspace.applyEdit(wsEdit);
+    const parts = [
+      `${applied} line(s) updated`,
+      `${plan.unchanged} unchanged`,
+      plan.skipped.length ? `${plan.skipped.length} skipped` : '',
+    ].filter(Boolean);
+    const msg = `Proofread dialogue applied: ${parts.join(', ')}.`;
+    if (plan.skipped.length) {
+      const detail = plan.skipped.map((s) => `${s.anchor} — ${s.reason}`).join('\n');
+      void vscode.window.showWarningMessage(`${msg}\n${detail}`, { modal: false });
+    } else {
+      void vscode.window.showInformationMessage(msg);
+    }
+  };
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = (doc?: vscode.TextDocument): void => {
     if (doc) {
@@ -438,6 +581,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
 
     vscode.commands.registerCommand('renpy-analytics.playtestFromHere', playtestFromHere),
+    vscode.commands.registerCommand('renpy-analytics.pasteDialogue', pasteAsDialogue),
+    vscode.commands.registerCommand('renpy-analytics.exportDialogue', exportDialogue),
+    vscode.commands.registerCommand('renpy-analytics.applyProofread', applyProofread),
 
     vscode.commands.registerCommand('renpy-analytics.analyzeProject', async () => {
       const { flow, safety, metrics } = await runAnalysis();

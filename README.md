@@ -6,7 +6,7 @@ Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/
 
 ![Story flow graph: labels, menu choices, condition-labeled edges, entry points in green, unreachable scenes in red](media/screenshots/flow-graph.png)
 
-## Features (0.6 — M1–M6)
+## Features (0.7 — M1–M7)
 
 ### Structural folding
 
@@ -103,6 +103,21 @@ Consequence extraction adapted from [universal-renpy-walkthrough](https://github
 
 Edges leaving an `if`/`elif`/`while` block carry the condition as an edge label (webview and DOT), and hovering a choice node shows its consequence summary — which flags it sets and where it leads.
 
+### Prose pipeline: draft anywhere, proofread anywhere
+
+The `.rpy` file stays the single source of truth; prose flows *in* once and dialogue text flows *out and back* — structure never round-trips.
+
+**Ren'Py: Paste as Ren'Py Dialogue** converts the clipboard at the cursor. It accepts the formats writers actually draft in:
+
+- **Screenplay**: `EVE` cue lines (with `(V.O.)` suffixes and parentheticals) followed by dialogue
+- **Chat**: `Eve: dialogue` lines
+- **Narration**: plain paragraphs (wrapped lines are joined)
+- **Fountain-flavored logic** (adapted from the `.fflow` spec): `# SECTION` and `INT. RUINS - NIGHT` headings → labels, `? prompt` + `+ [Label] body` → menus, `-> #TARGET` → jumps, `~ hp -= 5` → `$` statements, `! BG:` / `! SHOW:` / `! MUSIC:` / `! SFX:` → scene/show/play
+
+Speakers are matched to your `Character(...)` definitions automatically; unknown names get a QuickPick — map to an existing character, keep as a string speaker, or take a new variable with a TODO define comment.
+
+**Ren'Py: Export Dialogue for Proofreading** writes all dialogue as Markdown — speaker-prefixed paragraphs grouped by file and label, each carrying a `<!-- file:line -->` anchor. Hand it to your proofreader (it opens fine in Word/Docs), then **Ren'Py: Apply Proofread Dialogue** diffs the edited text back into the scripts by anchor: only string content changes, lines whose code changed since export are skipped and reported.
+
 ### Playtest from here
 
 **Ren'Py: Playtest From Here** (command palette or editor right-click) launches the game warped to the line under the cursor — no more replaying from `start` to reach the scene you just wrote. It saves the file, finds the project root (the folder above `game/`), and runs the SDK with `--warp game/…/file.rpy:line`.
@@ -155,6 +170,9 @@ All commands are prefixed `Ren'Py:` in the command palette. First-time users can
 | `Ren'Py: Show Story Flow Graph (Current File)` | Story map scoped to the active script |
 | `Ren'Py: Export Flow Graph (DOT)` | Graphviz DOT export of either graph |
 | `Ren'Py: Playtest From Here` | Launch the game warped to the cursor line |
+| `Ren'Py: Paste as Ren'Py Dialogue` | Convert clipboard prose/screenplay to script at the cursor |
+| `Ren'Py: Export Dialogue for Proofreading` | Anchored Markdown of all dialogue for external editing |
+| `Ren'Py: Apply Proofread Dialogue` | Diff the edited document's text back into the scripts |
 | `Ren'Py: Fold All Labels` | Collapse the file to its label skeleton |
 | `Ren'Py: Fold All Menus` | Collapse menu blocks and choices |
 | `Ren'Py: Fold All Labels and Menus` | Collapse everything foldable |

@@ -28,13 +28,13 @@ Flow graph gained condition labels on edges leaving `if`/`elif`/`while` blocks (
 
 **Demand evidence:** devs maintain Google Sheets mapping choices → flags → gated scenes; dependency-graph planning is standard practice the tooling doesn't support.
 
-## M7 — Prose pipeline: doc → rpy, dialogue out for proofreading (v0.7)
+## M7 — Prose pipeline: doc → rpy, dialogue out for proofreading (v0.7) — SHIPPED
 
-The draft-in-Docs → port-to-Ren'Py round trip is the ecosystem's biggest unsolved gap. **Design constraint learned from the fountain-flow experiment (see below): no bidirectional round-trip.** The `.rpy` file is the single source of truth; prose flows in once, and dialogue text flows out (and back) only as *text*, keyed to stable anchors — structure never round-trips.
+Design constraint from the fountain-flow post-mortem held: **no bidirectional round-trip** — `.rpy` is the source of truth, prose flows in once, dialogue text flows out and back keyed to `<!-- file:line -->` anchors.
 
-1. **Paste as Ren'Py dialogue** — convert clipboard prose on paste: screenplay format (`NAME` / dialogue blocks), `Name: line` chat format, and a Fountain-flavored dialect (adapted from the fountain-flow `.fflow` spec: `+ [Label] choice`, `-> #target`, `! SHOW:`, `~ var += 1`) into proper `label`/`menu`/dialogue statements. Character-name → variable mapping learned from existing `Character(...)` definitions, with a QuickPick for unknowns.
-2. **Export dialogue for proofreading** — Markdown/docx of dialogue-only prose (code stripped), each paragraph carrying a hidden `file:line` anchor.
-3. **Re-import proofread text** — diff the returned document's *dialogue text only* against the anchors and apply as edits. Because only string content syncs — never structure — the fidelity problems that sank fountain-flow can't occur.
+1. **Ren'Py: Paste as Ren'Py Dialogue** — clipboard conversion at the cursor: screenplay cues (incl. `(V.O.)` + parentheticals), `Name: line` chat format, narration paragraphs, and the Fountain-flavored `.fflow` dialect (`# SECTION`, `INT.` headings, `? prompt`, `+ [Label] body`, `-> #target`, `~ expr`, `! BG:/SHOW:/HIDE:/MUSIC:/SFX:`). Speaker mapping from `Character(...)` defines with QuickPick resolution for unknowns (map / string speaker / new slug + TODO define).
+2. **Ren'Py: Export Dialogue for Proofreading** — anchored Markdown grouped by file and label (docx deferred; the Markdown opens in Word/Docs).
+3. **Ren'Py: Apply Proofread Dialogue** — diffs edited paragraph text against anchors, replaces only the dialogue string literal on each line, skips-and-reports lines whose code changed since export.
 
 **Demand evidence:** writers draft in Docs/Scrivener for spellcheck/grammar/comments and hand-port to script; launcher's "dialogue text only" export + Grammarly round-trip is a documented common workflow; no existing tool converts screenplay formats to Ren'Py.
 

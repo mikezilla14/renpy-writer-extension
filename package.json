@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "publisher": "mikezilla",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -107,6 +107,18 @@
       {
         "command": "renpy-analytics.playtestFromHere",
         "title": "Ren'Py: Playtest From Here"
+      },
+      {
+        "command": "renpy-analytics.pasteDialogue",
+        "title": "Ren'Py: Paste as Ren'Py Dialogue"
+      },
+      {
+        "command": "renpy-analytics.exportDialogue",
+        "title": "Ren'Py: Export Dialogue for Proofreading"
+      },
+      {
+        "command": "renpy-analytics.applyProofread",
+        "title": "Ren'Py: Apply Proofread Dialogue"
       }
     ],
     "menus": {
@@ -115,6 +127,11 @@
           "command": "renpy-analytics.playtestFromHere",
           "when": "editorLangId == renpy || resourceExtname == .rpy || resourceExtname == .rpym",
           "group": "navigation@9"
+        },
+        {
+          "command": "renpy-analytics.pasteDialogue",
+          "when": "editorLangId == renpy || resourceExtname == .rpy || resourceExtname == .rpym",
+          "group": "9_cutcopypaste@9"
         }
       ]
     },
