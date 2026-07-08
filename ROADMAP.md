@@ -12,12 +12,11 @@ Where the extension goes after 0.4. Grounded in community research (Lemma Soft t
 - Story flow graph webview (project + current-file scope) with DOT export
 - Playtime estimate, generated file footers, game-folder scoping
 
-## M5 — Warp-to-cursor playtest (v0.5)
+## M5 — Warp-to-cursor playtest (v0.5) — SHIPPED
 
-Launch the game directly at the scene under the cursor: run the Ren'Py SDK with `--warp file:line`, using the existing `renpy-analytics.sdkPath` setting plus auto-detection of common SDK install locations. Command + editor context-menu entry: **Ren'Py: Playtest From Here**.
+**Ren'Py: Playtest From Here** (command palette + editor context menu): launches the SDK with `<sdk>/renpy.exe <projectdir> run --warp game/…/file.rpy:line` from the cursor position. SDK resolved from `renpy-analytics.sdkPath`, with auto-detection of `renpy-*-sdk` installs (newest first) and a browse fallback; the choice is persisted. `after_warp` seeding is documented in the README (game-side label, nothing to configure).
 
-- Optional companion setting for an `after_warp` label so devs can seed variables before the warped scene runs.
-- Stretch: a "Playtest This Choice" CodeLens entry that warps to the menu line.
+- Remaining stretch: a "Playtest This Choice" CodeLens entry that warps to the menu line.
 
 **Demand evidence:** the single most recurring testing complaint — devs resort to the Shift+O console, hand-built dev menus, or raw `--warp` invocations to avoid replaying from `start`.
 

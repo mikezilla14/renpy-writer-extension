@@ -4,7 +4,7 @@ Structure folding, save-file safety checks, and (coming) story-flow analysis and
 
 Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the architecture and [ROADMAP.md](ROADMAP.md) for what's next.
 
-## Features (0.4 — M1–M4)
+## Features (0.5 — M1–M5)
 
 ### Structural folding
 
@@ -81,6 +81,12 @@ Consequence extraction adapted from [universal-renpy-walkthrough](https://github
 **Ren'Py: Show Story Flow Graph (Current File)** scopes the map to the active script (e.g. one day file): everything in the file plus a dimmed, dashed ring of external neighbors — the labels in other files that jump in, and the ones this file exits to — all still clickable.
 
 **Ren'Py: Export Flow Graph (DOT)** writes either graph (it asks: whole project or current file) as Graphviz DOT for rendering with `dot -Tsvg` or any DOT viewer.
+
+### Playtest from here
+
+**Ren'Py: Playtest From Here** (command palette or editor right-click) launches the game warped to the line under the cursor — no more replaying from `start` to reach the scene you just wrote. It saves the file, finds the project root (the folder above `game/`), and runs the SDK with `--warp game/…/file.rpy:line`.
+
+The SDK is located via the `renpy-analytics.sdkPath` setting; when unset, common install locations are scanned for `renpy-*-sdk` folders (newest first) and your pick is remembered. Warp requires `config.developer` to be true, which Ren'Py enables by default for un-built projects. To seed variables for warped scenes, define an [`after_warp` label](https://www.renpy.org/doc/html/label.html#special-labels) in your game.
 
 ### Dead-end detection
 

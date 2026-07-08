@@ -1,3 +1,6 @@
+import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AnalysisTreeProvider } from './analysisView';
@@ -17,6 +20,12 @@ import { computeMetrics } from './core/metrics';
 import { FileModel } from './core/model';
 import { parseRpy } from './core/parser';
 import { samePath } from './core/paths';
+import {
+  findWarpTarget,
+  looksLikeSdkDir,
+  rankSdkDirNames,
+  resolveSdkExecutable,
+} from './core/warp';
 import { CurrentFileTreeProvider } from './currentFileView';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
@@ -295,6 +304,111 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
+  /** Scans common install locations for Ren'Py SDK folders, newest first. */
+  const detectSdkExecutables = (): string[] => {
+    const home = os.homedir();
+    const roots = [home, path.join(home, 'Downloads'), path.join(home, 'Documents')];
+    if (process.platform === 'win32') roots.push('C:\\', 'D:\\');
+    else roots.push('/opt', path.join(home, 'Applications'));
+    const found: string[] = [];
+    for (const root of roots) {
+      let names: string[];
+      try {
+        names = fs.readdirSync(root);
+      } catch {
+        continue;
+      }
+      for (const name of rankSdkDirNames(names.filter(looksLikeSdkDir))) {
+        const exe = resolveSdkExecutable(path.join(root, name), process.platform, fs.existsSync);
+        if (exe) found.push(exe);
+      }
+    }
+    return found;
+  };
+
+  /**
+   * Returns the Ren'Py launcher executable, asking the user to pick or browse
+   * when the sdkPath setting is missing or invalid. Persists the choice.
+   */
+  const resolveSdkForLaunch = async (): Promise<string | undefined> => {
+    const configured = config().get<string>('sdkPath', '').trim();
+    if (configured) {
+      const exe = resolveSdkExecutable(configured, process.platform, fs.existsSync);
+      if (exe) return exe;
+      void vscode.window.showWarningMessage(
+        `renpy-analytics.sdkPath ('${configured}') does not contain a Ren'Py launcher — falling back to auto-detection.`
+      );
+    }
+    const browseItem = { label: '$(folder-opened) Browse for the Ren\'Py SDK folder…', exe: '' };
+    const items = [
+      ...detectSdkExecutables().map((exe) => ({ label: path.dirname(exe), exe })),
+      browseItem,
+    ];
+    let exe: string | undefined;
+    if (items.length === 1) {
+      // Nothing detected — go straight to the folder picker.
+      exe = await browseSdk();
+    } else {
+      const picked = await vscode.window.showQuickPick(items, {
+        title: "Select the Ren'Py SDK to playtest with",
+        placeHolder: 'Detected SDK installs (pick one, or browse)',
+      });
+      if (!picked) return undefined;
+      exe = picked.exe || (await browseSdk());
+    }
+    if (exe) {
+      await config().update('sdkPath', path.dirname(exe), vscode.ConfigurationTarget.Global);
+    }
+    return exe;
+  };
+
+  const browseSdk = async (): Promise<string | undefined> => {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      title: "Select your Ren'Py SDK folder (contains renpy.exe / renpy.sh)",
+    });
+    if (!picked?.length) return undefined;
+    const exe = resolveSdkExecutable(picked[0].fsPath, process.platform, fs.existsSync);
+    if (!exe) {
+      void vscode.window.showErrorMessage(
+        `No Ren'Py launcher found in '${picked[0].fsPath}'. Pick the SDK folder that contains renpy.exe (Windows) or renpy.sh.`
+      );
+    }
+    return exe;
+  };
+
+  const playtestFromHere = async (): Promise<void> => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !isRenpyDoc(editor.document)) {
+      void vscode.window.showWarningMessage('Open a .rpy file to playtest from the cursor.');
+      return;
+    }
+    if (editor.document.isDirty) await editor.document.save();
+    const target = findWarpTarget(editor.document.uri.fsPath, editor.selection.active.line);
+    if (!target) {
+      void vscode.window.showErrorMessage(
+        "Ren'Py can only warp into scripts inside a project's game/ folder — this file isn't under one."
+      );
+      return;
+    }
+    const exe = await resolveSdkForLaunch();
+    if (!exe) return;
+    const child = spawn(exe, [target.projectDir, 'run', '--warp', target.spec], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.on('error', (err) => {
+      void vscode.window.showErrorMessage(`Failed to launch Ren'Py: ${err.message}`);
+    });
+    child.unref();
+    void vscode.window.setStatusBarMessage(
+      `$(play) Ren'Py warping to ${target.spec} (requires config.developer)`,
+      8000
+    );
+  };
+
   let timer: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = (doc?: vscode.TextDocument): void => {
     if (doc) {
@@ -317,6 +431,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('renpy-analytics.foldAllLabelsAndMenus', () =>
       foldBlocks(['label', 'menu', 'choice'])
     ),
+
+    vscode.commands.registerCommand('renpy-analytics.playtestFromHere', playtestFromHere),
 
     vscode.commands.registerCommand('renpy-analytics.analyzeProject', async () => {
       const { flow, safety, metrics } = await runAnalysis();
