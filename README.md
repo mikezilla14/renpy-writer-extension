@@ -2,7 +2,7 @@
 
 Structure folding, save-file safety checks, and (coming) story-flow analysis and writing metrics for [Ren'Py](https://www.renpy.org/) projects in VS Code.
 
-Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the full roadmap.
+Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the architecture and [ROADMAP.md](ROADMAP.md) for what's next.
 
 ## Features (0.4 — M1–M4)
 
