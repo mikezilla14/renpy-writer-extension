@@ -487,10 +487,33 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const exportDialogue = async (): Promise<void> => {
     const models = await index.getModels();
-    const md = exportDialogueMarkdown(models, (p) => vscode.workspace.asRelativePath(p));
+    let selected = models;
+    let suggestedName = 'dialogue-proofread.md';
+    const editor = vscode.window.activeTextEditor;
+    if (editor && isRenpyDoc(editor.document)) {
+      const fsPath = editor.document.uri.fsPath;
+      const model = models.find((m) => samePath(m.path, fsPath));
+      if (model) {
+        const rel = vscode.workspace.asRelativePath(fsPath);
+        const picked = await vscode.window.showQuickPick(
+          [
+            { label: 'Whole project', scope: 'project' as const },
+            { label: `Current file only (${rel})`, scope: 'file' as const },
+          ],
+          { title: 'Export dialogue for…' }
+        );
+        if (!picked) return;
+        if (picked.scope === 'file') {
+          selected = [model];
+          const base = path.basename(fsPath).replace(/\.rpym?$/, '');
+          suggestedName = `${base}-proofread.md`;
+        }
+      }
+    }
+    const md = exportDialogueMarkdown(selected, (p) => vscode.workspace.asRelativePath(p));
     const folder = vscode.workspace.workspaceFolders?.[0];
     const uri = await vscode.window.showSaveDialog({
-      defaultUri: folder ? vscode.Uri.joinPath(folder.uri, 'dialogue-proofread.md') : undefined,
+      defaultUri: folder ? vscode.Uri.joinPath(folder.uri, suggestedName) : undefined,
       filters: { Markdown: ['md'] },
       title: 'Export dialogue for proofreading',
     });

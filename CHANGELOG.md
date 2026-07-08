@@ -4,7 +4,7 @@
 
 - **Prose pipeline** — the `.rpy` stays the source of truth; prose flows in once, dialogue text round-trips by anchor:
   - **Ren'Py: Paste as Ren'Py Dialogue**: converts clipboard screenplay cues, `Name: line` chat format, narration paragraphs, and Fountain-flavored logic (`? prompt`, `+ [Label]` choices, `-> #target` jumps, `~ expr` state, `! BG:/SHOW:/MUSIC:/SFX:` assets) into proper Ren'Py script at the cursor. Speakers are matched to `Character(...)` defines, with a QuickPick for unknowns.
-  - **Ren'Py: Export Dialogue for Proofreading**: anchored Markdown of all dialogue, grouped by file and label — share it, edit it anywhere.
+  - **Ren'Py: Export Dialogue for Proofreading**: anchored Markdown of all dialogue — whole project or current file only (`<filename>-proofread.md`) — grouped by file and label; share it, edit it anywhere.
   - **Ren'Py: Apply Proofread Dialogue**: applies the edited text back by `<!-- file:line -->` anchor; only dialogue strings change, moved/edited code lines are skipped and reported.
 
 ## 0.6.1

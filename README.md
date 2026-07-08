@@ -116,7 +116,7 @@ The `.rpy` file stays the single source of truth; prose flows *in* once and dial
 
 Speakers are matched to your `Character(...)` definitions automatically; unknown names get a QuickPick — map to an existing character, keep as a string speaker, or take a new variable with a TODO define comment.
 
-**Ren'Py: Export Dialogue for Proofreading** writes all dialogue as Markdown — speaker-prefixed paragraphs grouped by file and label, each carrying a `<!-- file:line -->` anchor. Hand it to your proofreader (it opens fine in Word/Docs), then **Ren'Py: Apply Proofread Dialogue** diffs the edited text back into the scripts by anchor: only string content changes, lines whose code changed since export are skipped and reported.
+**Ren'Py: Export Dialogue for Proofreading** writes dialogue as Markdown — whole project or just the current file (saved as `<filename>-proofread.md`) — speaker-prefixed paragraphs grouped by file and label, each carrying a `<!-- file:line -->` anchor. Hand it to your proofreader (it opens fine in Word/Docs), then **Ren'Py: Apply Proofread Dialogue** diffs the edited text back into the scripts by anchor: only string content changes, lines whose code changed since export are skipped and reported.
 
 ### Playtest from here
 
