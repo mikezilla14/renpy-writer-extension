@@ -20,13 +20,11 @@ Where the extension goes after 0.4. Grounded in community research (Lemma Soft t
 
 **Demand evidence:** the single most recurring testing complaint — devs resort to the Shift+O console, hand-built dev menus, or raw `--warp` invocations to avoid replaying from `start`.
 
-## M6 — Flag & variable explorer (v0.6)
+## M6 — Flag & variable explorer (v0.6) — SHIPPED
 
-Replace the flag-tracking spreadsheets VN devs keep by hand. A new **Variables** view (activity bar) that indexes every story variable:
+**Variables** view (activity bar): every story variable with declaration, writes (each annotated with its enclosing label and triggering menu choice), and reads — condition reads marked as gates. Orphan groups at the top: *Gated but never set* (flag read in conditions, never assigned) and *Never read*. Engine namespaces and Character/image defines excluded; attribute writes credited to the declared base object; `persistent.*` tracked. Subsumes SPEC §3.6 variable-lifecycle diagnostics.
 
-- Where it's `default`ed/`define`d, every write (with the menu choice that triggers it, reusing the CodeLens consequence extractor), and every read/gate (`if`, choice conditions, screen `showif`).
-- Click-through to each site; orphan detection (written but never read, read but never written) — this subsumes SPEC §3.6 variable-lifecycle diagnostics.
-- Flow-graph enhancement: edges gated by a condition get the condition as an edge label; choice nodes that set flags show them.
+Flow graph gained condition labels on edges leaving `if`/`elif`/`while` blocks (webview + DOT) and consequence summaries on choice-node hover.
 
 **Demand evidence:** devs maintain Google Sheets mapping choices → flags → gated scenes; dependency-graph planning is standard practice the tooling doesn't support.
 

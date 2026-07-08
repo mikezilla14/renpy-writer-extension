@@ -438,8 +438,10 @@ export function parseRpy(path: string, text: string): FileModel {
     if (endsColon) {
       const kw = /^(if|elif|else|while|for)\b/.exec(s)?.[1] as BlockKind | undefined;
       if (kw) {
-        extractIdentifiers(model, s.slice(kw.length, -1), headerLine);
-        open(kw, indent, headerLine);
+        const cond = s.slice(kw.length, -1).trim();
+        extractIdentifiers(model, cond, headerLine);
+        // Condition text is kept as the block name for flow-graph edge labels
+        open(kw, indent, headerLine, {}, cond || undefined);
         continue;
       }
     }

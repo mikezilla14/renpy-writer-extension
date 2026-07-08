@@ -4,7 +4,7 @@ Structure folding, save-file safety checks, and (coming) story-flow analysis and
 
 Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/vscode-language-renpy) (highlighting, completion, navigation) and [renpy-magic](https://github.com/adiffx/renpy-magic) (LSP: rename, references, lint). This extension deliberately stays out of their lanes — its focus is story structure, reachability, and writing statistics. See [SPEC.md](SPEC.md) for the architecture and [ROADMAP.md](ROADMAP.md) for what's next.
 
-## Features (0.5 — M1–M5)
+## Features (0.6 — M1–M6)
 
 ### Structural folding
 
@@ -63,6 +63,15 @@ Below the project tree, the **Current File** pane follows the active editor and 
 
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
 
+### Flag & variable explorer
+
+The **Variables** pane (activity bar) replaces the flag-tracking spreadsheet: every story variable with its declaration, every write — including which menu choice triggers it — and every read, with condition reads marked as *gates*. Click any site to jump to it. Two orphan groups surface likely bugs at the top:
+
+- **Gated but never set** — conditions read the flag, but nothing ever assigns it: the gated branch can never trigger.
+- **Never read** — flags written and then forgotten (defines are exempt: `scene`/`show` usages aren't expression reads).
+
+Engine namespaces (`config.*`, `gui.*`, `style.*`, …) and `Character(...)`/image defines are excluded; attribute writes like `player.hp -= 5` are credited to the declared `player` object; `persistent.*` variables are tracked automatically.
+
 ### Choice-consequence CodeLens
 
 Above every menu choice, a summary of what picking it does — stat changes, function calls, and where the story goes:
@@ -81,6 +90,8 @@ Consequence extraction adapted from [universal-renpy-walkthrough](https://github
 **Ren'Py: Show Story Flow Graph (Current File)** scopes the map to the active script (e.g. one day file): everything in the file plus a dimmed, dashed ring of external neighbors — the labels in other files that jump in, and the ones this file exits to — all still clickable.
 
 **Ren'Py: Export Flow Graph (DOT)** writes either graph (it asks: whole project or current file) as Graphviz DOT for rendering with `dot -Tsvg` or any DOT viewer.
+
+Edges leaving an `if`/`elif`/`while` block carry the condition as an edge label (webview and DOT), and hovering a choice node shows its consequence summary — which flags it sets and where it leads.
 
 ### Playtest from here
 

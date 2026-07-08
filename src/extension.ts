@@ -26,7 +26,9 @@ import {
   rankSdkDirNames,
   resolveSdkExecutable,
 } from './core/warp';
+import { buildVariableIndex } from './core/variables';
 import { CurrentFileTreeProvider } from './currentFileView';
+import { VariablesTreeProvider } from './variablesView';
 import { buildJsonReport, buildMarkdownReport } from './core/report';
 import { analyzeSaveSafety, SaveSafetyFinding } from './core/saveSafety';
 import { analyzeSpeakers, SpeakerFinding } from './core/speakers';
@@ -109,6 +111,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const speakerDiagnostics = vscode.languages.createDiagnosticCollection('renpy-speakers');
   const tree = new AnalysisTreeProvider();
   const currentFileTree = new CurrentFileTreeProvider();
+  const variablesTree = new VariablesTreeProvider();
   const lensProvider = new ChoiceConsequenceLensProvider();
   context.subscriptions.push(
     safetyDiagnostics,
@@ -116,6 +119,7 @@ export function activate(context: vscode.ExtensionContext): void {
     speakerDiagnostics,
     vscode.window.registerTreeDataProvider('renpyAnalytics.analysis', tree),
     vscode.window.registerTreeDataProvider('renpyAnalytics.currentFile', currentFileTree),
+    vscode.window.registerTreeDataProvider('renpyAnalytics.variables', variablesTree),
     vscode.languages.registerFoldingRangeProvider(SELECTOR, new RenpyFoldingProvider()),
     vscode.languages.registerCodeLensProvider(SELECTOR, lensProvider)
   );
@@ -163,6 +167,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const wpm = config().get<number>('readingSpeedWpm', 200);
     const playtime = estimatePlaytime(models, flow, wpm);
     tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace', playtime);
+    variablesTree.setResults(buildVariableIndex(models));
     lastAnalysis = { models, flow, safety, speakers, metrics };
     updateCurrentFileView();
     return lastAnalysis;

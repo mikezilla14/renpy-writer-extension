@@ -102,6 +102,12 @@ function renderSvg(graph: FlowGraph): string {
     parts.push(
       `<path class="${cls}" d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" marker-end="url(#arrow)"/>`
     );
+    if (e.cond) {
+      const cond = e.cond.length > 26 ? e.cond.slice(0, 25) + '…' : e.cond;
+      parts.push(
+        `<text class="edge-label" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 5}" text-anchor="middle">if ${escXml(cond)}</text>`
+      );
+    }
   }
   for (const p of placed) {
     const cls = [
@@ -120,7 +126,7 @@ function renderSvg(graph: FlowGraph): string {
       `<g class="${cls}"${clickable}>` +
         `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${p.kind === 'choice' ? 12 : 6}"/>` +
         `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + 4}" text-anchor="middle">${escXml(text)}</text>` +
-        `<title>${escXml(p.title)}${p.file ? `\n${escXml(p.file)}:${(p.line ?? 0) + 1}` : ''}</title>` +
+        `<title>${escXml(p.title)}${p.detail ? `\n${escXml(p.detail)}` : ''}${p.file ? `\n${escXml(p.file)}:${(p.line ?? 0) + 1}` : ''}</title>` +
         `</g>`
     );
   }
@@ -167,6 +173,7 @@ export function showFlowGraphPanel(graph: FlowGraph, title = "Ren'Py Story Flow"
   .edge-fallthrough { stroke-dasharray: 5 4; opacity: 0.6; }
   .edge-call { stroke-dasharray: 2 3; }
   .edge-choice { opacity: 0.5; }
+  .edge-label { fill: var(--vscode-descriptionForeground, #999); font-family: var(--vscode-font-family); font-size: 9px; pointer-events: none; }
   .arrowhead { fill: var(--vscode-editorWidget-border, #888); }
 </style>
 </head>
