@@ -53,6 +53,8 @@ Disable entirely with the `renpy-analytics.saveSafety.enabled` setting. Run on d
 
 **Ren'Py: Export Analysis Report** writes the full analysis as Markdown (for humans) or JSON (for CI).
 
+![Project Analysis view: playtime estimate, inaccessible labels, dead ends, save-file safety, files and characters](media/screenshots/project-analysis.png)
+
 ### Current File pane
 
 Below the project tree, the **Current File** pane follows the active editor and shows writing/narrative stats for just that script:
@@ -65,6 +67,8 @@ Below the project tree, the **Current File** pane follows the active editor and 
 
 Entry points can be extended with the `renpy-analytics.extraEntryPoints` setting.
 
+![Current File pane: word count, reading time, pacing, per-character stats, and issues for the active script](media/screenshots/current-file.png)
+
 ### Flag & variable explorer
 
 The **Variables** pane (activity bar) replaces the flag-tracking spreadsheet: every story variable with its declaration, every write — including which menu choice triggers it — and every read, with condition reads marked as *gates*. Click any site to jump to it. Two orphan groups surface likely bugs at the top:
@@ -74,6 +78,8 @@ The **Variables** pane (activity bar) replaces the flag-tracking spreadsheet: ev
 
 Engine namespaces (`config.*`, `gui.*`, `style.*`, …) and `Character(...)`/image defines are excluded; attribute writes like `player.hp -= 5` are credited to the declared `player` object; `persistent.*` variables are tracked automatically.
 
+![Variables pane: orphan groups for flags gated but never set and never read, plus the full variable index](media/screenshots/variables.png)
+
 ### Choice-consequence CodeLens
 
 Above every menu choice, a summary of what picking it does — stat changes, function calls, and where the story goes:
@@ -82,6 +88,8 @@ Above every menu choice, a summary of what picking it does — stat changes, fun
 +corruption  story.set_prologue_why_write=…  ƒ apply_balanced_effect  → day100_2_evening_flashback
 "To catalogue what power hides. [[Curious, corrupting]]":
 ```
+
+![Choice-consequence CodeLens above a menu choice showing function calls and stat changes](media/screenshots/codelens.png)
 
 Consequence extraction adapted from [universal-renpy-walkthrough](https://github.com/BCassO/universal-renpy-walkthrough) (MIT), computed statically at edit time. Toggle with `renpy-analytics.codeLens.enabled`.
 
