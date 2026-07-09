@@ -2,7 +2,7 @@
   "name": "renpy-analytics",
   "displayName": "Ren'Py Analytics",
   "description": "Structure folding, story-flow analysis, save-file safety checks, and writing metrics for Ren'Py projects. Companion to vscode-language-renpy and renpy-magic.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "mikezilla",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -119,6 +119,10 @@
       {
         "command": "renpy-analytics.applyProofread",
         "title": "Ren'Py: Apply Proofread Dialogue"
+      },
+      {
+        "command": "renpy-analytics.exportProgress",
+        "title": "Ren'Py: Export Writing Progress History"
       }
     ],
     "menus": {
@@ -278,6 +282,11 @@
           "type": "number",
           "default": 200,
           "description": "Words-per-minute used for reading-time estimates in the Current File view."
+        },
+        "renpy-analytics.dailyWordGoal": {
+          "type": "number",
+          "default": 0,
+          "description": "Daily word-count goal shown in the status bar and Writing Progress section (0 disables the goal; progress still tracks)."
         },
         "renpy-analytics.sdkPath": {
           "type": "string",

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- **Writing progress tracking**: daily word-count history persisted per workspace, a status-bar counter with today's delta, an optional daily goal (`renpy-analytics.dailyWordGoal`), a Writing Progress section in the Project Analysis view (today / session / last 14 days), and CSV/JSON export via **Ren'Py: Export Writing Progress History**.
+- Export Dialogue for Proofreading: whole-project or current-file scope (`<filename>-proofread.md`).
+
 ## 0.7.0
 
 - **Prose pipeline** — the `.rpy` stays the source of truth; prose flows in once, dialogue text round-trips by anchor:

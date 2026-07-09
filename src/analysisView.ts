@@ -74,7 +74,8 @@ export class AnalysisTreeProvider extends BaseTreeProvider {
     safety: SaveSafetyFinding[],
     speakers: SpeakerFinding[],
     scopeLabel: string,
-    playtime: { words: number; minutes: number }
+    playtime: { words: number; minutes: number },
+    progress?: TreeNode
   ): void {
     const rel = (p: string): string => vscode.workspace.asRelativePath(p);
 
@@ -175,6 +176,7 @@ export class AnalysisTreeProvider extends BaseTreeProvider {
           'Upper bound: all dialogue in reachable labels at the configured reading speed. A single route is shorter since branches are mutually exclusive.',
         icon: new vscode.ThemeIcon('watch'),
       },
+      ...(progress ? [progress] : []),
       {
         label: `Inaccessible labels (${fmt(flow.inaccessible.length)})`,
         icon: new vscode.ThemeIcon('debug-disconnect'),

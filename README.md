@@ -6,7 +6,7 @@ Designed as a **companion** to [vscode-language-renpy](https://github.com/renpy/
 
 ![Story flow graph: labels, menu choices, condition-labeled edges, entry points in green, unreachable scenes in red](media/screenshots/flow-graph.png)
 
-## Features (0.7 — M1–M7)
+## Features (0.8 — M1–M8)
 
 ### Structural folding
 
@@ -132,6 +132,10 @@ Reachable labels whose flow runs off the end of the file without `return`/`jump`
 
 The Project Analysis view shows an estimated total playtime (all reachable dialogue at `renpy-analytics.readingSpeedWpm`) — an upper bound, since branches are mutually exclusive.
 
+### Writing progress
+
+A status-bar counter tracks words written today (`✏ +523 words today`), computed from the project's total word count and persisted per-workspace, one snapshot per calendar day. The **Writing progress** section in the Project Analysis view shows today, this session, and the last two weeks of daily deltas. Set `renpy-analytics.dailyWordGoal` to get a `523/1000` goal readout, and export the full history as CSV or JSON with **Ren'Py: Export Writing Progress History**.
+
 ### Generated file footer
 
 **Ren'Py: Generate File Footer** (or **… for All Files**) appends a summary comment block to the end of a script:
@@ -173,6 +177,7 @@ All commands are prefixed `Ren'Py:` in the command palette. First-time users can
 | `Ren'Py: Paste as Ren'Py Dialogue` | Convert clipboard prose/screenplay to script at the cursor |
 | `Ren'Py: Export Dialogue for Proofreading` | Anchored Markdown of all dialogue for external editing |
 | `Ren'Py: Apply Proofread Dialogue` | Diff the edited document's text back into the scripts |
+| `Ren'Py: Export Writing Progress History` | Daily word-count history as CSV/JSON |
 | `Ren'Py: Fold All Labels` | Collapse the file to its label skeleton |
 | `Ren'Py: Fold All Menus` | Collapse menu blocks and choices |
 | `Ren'Py: Fold All Labels and Menus` | Collapse everything foldable |

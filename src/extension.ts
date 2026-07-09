@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AnalysisTreeProvider } from './analysisView';
+import { AnalysisTreeProvider, fmt, TreeNode } from './analysisView';
 import { analyzeChoices } from './core/choiceConsequences';
 import { computeFileInsights, estimatePlaytime } from './core/fileInsights';
 import { buildFlowGraph, filterGraphToFile, FlowGraph, toDot } from './core/flowGraph';
@@ -17,6 +17,14 @@ import {
 } from './core/footer';
 import { analyzeFlow, FlowAnalysis } from './core/graph';
 import { collectCharacterDisplayNames, computeMetrics } from './core/metrics';
+import {
+  computeProgress,
+  localDate,
+  ProgressSnapshot,
+  progressToCsv,
+  progressToJson,
+  updateHistory,
+} from './core/progress';
 import { convertProse, extractSpeakers, slug } from './core/prose';
 import {
   exportDialogueMarkdown,
@@ -132,6 +140,70 @@ export function activate(context: vscode.ExtensionContext): void {
 
   let lastAnalysis: AnalysisResult | undefined;
 
+  // --- Writing progress: per-day word history + session baseline ---
+  const HISTORY_KEY = 'renpy-analytics.progress.history';
+  let progressHistory = context.workspaceState.get<ProgressSnapshot[]>(HISTORY_KEY, []);
+  let sessionStartWords: number | undefined;
+  const progressStatus = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    90
+  );
+  progressStatus.name = "Ren'Py writing progress";
+  progressStatus.command = 'workbench.view.extension.renpy-analytics';
+  context.subscriptions.push(progressStatus);
+
+  const trackProgress = (totalWords: number): TreeNode => {
+    if (sessionStartWords === undefined) sessionStartWords = totalWords;
+    const today = localDate();
+    const updated = updateHistory(progressHistory, today, totalWords);
+    if (updated !== progressHistory) {
+      progressHistory = updated;
+      void context.workspaceState.update(HISTORY_KEY, progressHistory);
+    }
+    const goal = config().get<number>('dailyWordGoal', 0);
+    const info = computeProgress(progressHistory, today, sessionStartWords, goal);
+    const sign = (n: number): string => (n >= 0 ? `+${fmt(n)}` : fmt(n));
+    progressStatus.text = goal
+      ? `$(pencil) ${fmt(Math.max(info.todayDelta, 0))}/${fmt(goal)} words today`
+      : `$(pencil) ${sign(info.todayDelta)} words today`;
+    progressStatus.tooltip =
+      `Ren'Py writing progress\n` +
+      `Today: ${sign(info.todayDelta)} words · this session: ${sign(info.sessionDelta)}\n` +
+      `Project total: ${fmt(info.totalWords)} words` +
+      (goal ? `\nDaily goal: ${fmt(goal)}` : '');
+    progressStatus.show();
+
+    const children: TreeNode[] = [
+      {
+        label: `Today: ${sign(info.todayDelta)} words${goal ? ` (goal ${fmt(goal)})` : ''}`,
+        icon: new vscode.ThemeIcon(
+          goal && info.todayDelta >= goal ? 'check' : 'pencil'
+        ),
+      },
+      {
+        label: `This session: ${sign(info.sessionDelta)} words`,
+        icon: new vscode.ThemeIcon('history'),
+      },
+      ...info.recent.map((r) => ({
+        label: `${r.date}: ${sign(r.delta)}`,
+        description: `${fmt(r.words)} total`,
+        icon: new vscode.ThemeIcon('calendar'),
+      })),
+      {
+        label: 'Export history (CSV/JSON)…',
+        icon: new vscode.ThemeIcon('export'),
+        commandId: 'renpy-analytics.exportProgress',
+      },
+    ];
+    return {
+      label: `Writing progress`,
+      description: `${sign(info.todayDelta)} today`,
+      icon: new vscode.ThemeIcon('pencil'),
+      collapsed: true,
+      children,
+    };
+  };
+
   const updateCurrentFileView = (): void => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || !isRenpyDoc(editor.document)) {
@@ -172,7 +244,16 @@ export function activate(context: vscode.ExtensionContext): void {
     const gameDir = config().get<string>('gameDir', '').trim();
     const wpm = config().get<number>('readingSpeedWpm', 200);
     const playtime = estimatePlaytime(models, flow, wpm);
-    tree.setResults(flow, metrics, safety, speakers, gameDir || 'entire workspace', playtime);
+    const progressNode = trackProgress(metrics.totalWords);
+    tree.setResults(
+      flow,
+      metrics,
+      safety,
+      speakers,
+      gameDir || 'entire workspace',
+      playtime,
+      progressNode
+    );
     variablesTree.setResults(buildVariableIndex(models));
     lastAnalysis = { models, flow, safety, speakers, metrics };
     updateCurrentFileView();
@@ -607,6 +688,31 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('renpy-analytics.pasteDialogue', pasteAsDialogue),
     vscode.commands.registerCommand('renpy-analytics.exportDialogue', exportDialogue),
     vscode.commands.registerCommand('renpy-analytics.applyProofread', applyProofread),
+
+    vscode.commands.registerCommand('renpy-analytics.exportProgress', async () => {
+      if (progressHistory.length === 0) {
+        void vscode.window.showInformationMessage(
+          'No writing history yet — it accumulates as you write with the extension active.'
+        );
+        return;
+      }
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      const uri = await vscode.window.showSaveDialog({
+        defaultUri: folder
+          ? vscode.Uri.joinPath(folder.uri, 'writing-progress.csv')
+          : undefined,
+        filters: { CSV: ['csv'], JSON: ['json'] },
+        title: 'Export writing progress history',
+      });
+      if (!uri) return;
+      const content = uri.fsPath.endsWith('.json')
+        ? progressToJson(progressHistory)
+        : progressToCsv(progressHistory);
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+      void vscode.window.showInformationMessage(
+        `Writing history exported (${progressHistory.length} day(s)).`
+      );
+    }),
 
     vscode.commands.registerCommand('renpy-analytics.analyzeProject', async () => {
       const { flow, safety, metrics } = await runAnalysis();

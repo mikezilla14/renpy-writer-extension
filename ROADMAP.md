@@ -38,9 +38,9 @@ Design constraint from the fountain-flow post-mortem held: **no bidirectional ro
 
 **Demand evidence:** writers draft in Docs/Scrivener for spellcheck/grammar/comments and hand-port to script; launcher's "dialogue text only" export + Grammarly round-trip is a documented common workflow; no existing tool converts screenplay formats to Ren'Py.
 
-## M8 — Writing progress tracking (v0.8)
+## M8 — Writing progress tracking (v0.8) — SHIPPED
 
-Session and daily word-count deltas per project (computed from the existing metrics index, persisted in workspace state), an optional word-count goal with a status-bar progress indicator, and a history section in the Current File / Project views. Export history as CSV/JSON.
+Daily word-count snapshots persisted in workspace state; status-bar counter with today's delta (and `written/goal` readout when `renpy-analytics.dailyWordGoal` is set); Writing Progress section in the Project Analysis view with today/session/last-14-days deltas; CSV/JSON history export via **Ren'Py: Export Writing Progress History**.
 
 **Demand evidence:** word-count threads are perennial on Lemma Soft; uses include progress tracking, VA cost estimation (per-character line counts — we already have these), and playtime estimates.
 
